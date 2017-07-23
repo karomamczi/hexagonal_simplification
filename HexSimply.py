@@ -68,26 +68,21 @@ class HexSimply(object):
     Implemented to the code based on the code from website:
     http://geospatialpython.com/2011/01/point-in-polygon.html
     """
-    def ray_casting_method(self):
-        self.rcm = []
-        for hex in self.hex_coords:
-            for coords in self.polyline_coords:
-                n = len(hex)
-                inside = False
-                p1x, p1y = hex[0]
-                for i_n in range(n+1):
-                    p2x, p2y = hex[i_n % n]
-                    if coords[3] > min(p1y, p2y):
-                        if coords[3] <= max(p1y, p2y):
-                            if coords[2] <= max(p1x, p2x):
-                                if p1y != p2y:
-                                     xints = (coords[3]-p1y) * (p2x-p1x) / (p2y-p1y) + p1x
-                                if p1x == p2x or coords[2] <= xints:
-                                    inside = not inside
-                    p1x, p1y = p2x, p2y
-                if inside == True:
-                    self.rcm.append([self.hex_coords.index(hex), self.polyline_coords.index(coords), coords[2], coords[3]])
-        return self.rcm
+    def ray_casting_method(self, hex_coords, iter_polyline_coords):
+        n = len(hex_coords)
+        inside = False
+        p1x, p1y = hex_coords[0]
+        for k in range(n+1):
+            p2x, p2y = hex_coords[k % n]
+            if iter_polyline_coords[3] > min(p1y, p2y):
+                if iter_polyline_coords[3] <= max(p1y, p2y):
+                    if iter_polyline_coords[2] <= max(p1x, p2x):
+                        if p1y != p2y:
+                             xints = (iter_polyline_coords[3]-p1y) * (p2x-p1x) / (p2y-p1y) + p1x
+                        if p1x == p2x or iter_polyline_coords[2] <= xints:
+                            inside = not inside
+            p1x, p1y = p2x, p2y
+        return inside
 
     def vertex_clustering(self):
         return
@@ -121,9 +116,9 @@ class HexSimply(object):
         y_ul = y_ur        # y of upper-left corner
         a = sqrt((x_ul-x_ur)**2 + (y_ul-y_ur)**2)
         b = sqrt((x_ul-x_dl)**2 + (y_ul-y_dl)**2)
-        vertical_cover = trunc((b-(self.tessera_width()/2))/self.tessera_width()) + 1
-        horizontal_cover = trunc((a-0.5*self.largest_diagonal_half())/(1.5*self.largest_diagonal_half())) + 2
-        self.hex_coords = []
+        vertical_cover = trunc((b-(self.tessera_width()/2)) /self.tessera_width()) + 1
+        horizontal_cover = trunc((a-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
+        self.points_in_hex_coords = []
         id_hex = 0
         for i in range(horizontal_cover + 1):
             for j in range(vertical_cover + 1):
@@ -137,30 +132,15 @@ class HexSimply(object):
                         x = round((x_ul + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
                         y = round((y_ul + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j - self.tessera_width()/2, 4)
                         hex_coords_temp.append([x, y])
-                for coords in self.polyline_coords:
-                    n = len(hex_coords_temp)
-                    inside = False
-                    p1x, p1y = hex_coords_temp[0]
-                    for k in range(n+1):
-                        p2x, p2y = hex_coords_temp[k % n]
-                        if coords[3] > min(p1y, p2y):
-                            if coords[3] <= max(p1y, p2y):
-                                if coords[2] <= max(p1x, p2x):
-                                    if p1y != p2y:
-                                         xints = (coords[3]-p1y)*(p2x-p1x)/(p2y-p1y)+p1x
-                                    if p1x == p2x or coords[2] <= xints:
-                                        inside = not inside
-                        p1x, p1y = p2x, p2y
-                    if inside == True:
-                        self.hex_coords.append([id_hex, self.polyline_coords.index(coords), coords[2], coords[3]])
-
+                for point_coords in self.polyline_coords:
+                    if self.ray_casting_method(hex_coords_temp, point_coords) == True:
+                        self.points_in_hex_coords.append([id_hex, point_coords[1], point_coords[2], point_coords[3]])
                         #
-                        raport.write(str(self.hex_coords))
+                        raport.write(str(self.points_in_hex_coords))
                         raport.write("\n")
                         #
-
                 id_hex += 1
-        return arcpy.AddMessage(self.hex_coords)
+        return arcpy.AddMessage(self.points_in_hex_coords)
 
     # direction of tesselation consistent with the direction of the longest section of the original polyline
     # starting from the first point of this original polyline
