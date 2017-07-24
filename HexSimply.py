@@ -2,7 +2,7 @@
 # Filename: HexSimply.py
 # Author: Karolina Mamczarz
 # Institution: AGH University of Science and Technology in Cracow, Poland
-# Last update: 2017-03-08
+# Last update: 2017-07-24
 # Version: 1.0.0
 # Description: #
 # Class: HexSimply
@@ -16,6 +16,7 @@ import os
 from math import sqrt, trunc, sin, cos, pi
 from sys import exit
 
+
 class HexSimply(object):
 
     def __init__(self, original, method, l, s, simplified):
@@ -24,35 +25,36 @@ class HexSimply(object):
         self.l = l / 1000
         self.s = s
         self.method = method
-        #self.create_new_feature()
-        self.workspace = os.path.dirname(self.original) #POTEM DO WYRZUCENIA
+        self.workspace = os.path.dirname(self.original)  # POTEM DO WYRZUCENIA
         self.choose_method()
 
-    def create_new_feature(self):
+    def create_new_feature(self, new_polyline_coords):
         path, file = os.path.split(self.simplified)
         filename, file_ext = os.path.splitext(file)
         arcpy.CreateFeatureclass_management(path, filename, "POLYLINE", "", "", "", self.original)
         container, container_ext = os.path.splitext(path)
         if container_ext == ".gdb" or container_ext == ".mdb" or container_ext == ".sde":
             file = filename
-        self.full_pathname = path + "\\" + file
-        return self.full_pathname
+        full_pathname = path + "\\" + file
+        with arcpy.da.InsertCursor(full_pathname, ["SHAPE@"]) as cursor:
+            cursor.insertRow([arcpy.Polyline(arcpy.Array(new_polyline_coords))])
+        return
 
     def sort(self):
         #ewentualnie skrypt na dissolve NIEEEEEEEEEEE
         return
 
     def read_geom(self):
-        cursor = arcpy.da.SearchCursor(self.original, ["SHAPE@"])
-        self.polyline_coords = []
-        partnum = 0
-        for row in cursor:
-            for part in row[0]:
-                pntnum = 0
-                for pnt in part:
-                    self.polyline_coords.append([partnum, pntnum, pnt.X, pnt.Y])
-                    pntnum += 1
-                partnum += 1
+        with arcpy.da.SearchCursor(self.original, ["SHAPE@"]) as cursor:
+            self.polyline_coords = []
+            partnum = 0
+            for row in cursor:
+                for part in row[0]:
+                    pntnum = 0
+                    for pnt in part:
+                        self.polyline_coords.append([partnum, pntnum, pnt.X, pnt.Y])
+                        pntnum += 1
+                    partnum += 1
         return self.polyline_coords
 
     def tessera_width(self):
@@ -78,17 +80,43 @@ class HexSimply(object):
                 if iter_polyline_coords[3] <= max(p1y, p2y):
                     if iter_polyline_coords[2] <= max(p1x, p2x):
                         if p1y != p2y:
-                             xints = (iter_polyline_coords[3]-p1y) * (p2x-p1x) / (p2y-p1y) + p1x
+                            xints = (iter_polyline_coords[3]-p1y) * (p2x-p1x) / (p2y-p1y) + p1x
                         if p1x == p2x or iter_polyline_coords[2] <= xints:
                             inside = not inside
             p1x, p1y = p2x, p2y
         return inside
 
-    def vertex_clustering(self):
-        return
+    def vertex_clustering(self, points_list):
+        points_list.sort(key=lambda id_point: id_point[1])
+        self.cluster = []
+        prev = 0
+        for point in points_list:
+            if point[0] - prev != 0:
+                prev = point[0]
+                self.cluster.append([point])
+            elif point[0] == 0:
+                id = points_list.index(point)
+                if id == 0:
+                    prev = point[0]
+                    self.cluster.append([point])
+                else:
+                    self.cluster[-1].append(point)
+            else:
+                self.cluster[-1].append(point)
+        return self.cluster
 
-    def spatial_mean(self):
-        return
+    def spatial_mean(self, cluster_list, points_list):
+        self.mean_xy_list = []
+        self.mean_xy_list.append(arcpy.Point(points_list[0][2], points_list[0][3]))
+        for one_cluster in cluster_list:
+            for xy in one_cluster:
+                n = one_cluster.index(xy) + 1
+            sums = [sum(i) for i in zip(*one_cluster)]
+            mean_x = sums[2]/n
+            mean_y = sums[3]/n
+            self.mean_xy_list.append(arcpy.Point(mean_x, mean_y))
+        self.mean_xy_list.append(arcpy.Point(points_list[-1][2], points_list[-1][3]))
+        return self.mean_xy_list
 
     def eliminate_self_crossing(self):
         return
@@ -96,13 +124,11 @@ class HexSimply(object):
     def statistics(self):
         return
 
-    # direction of tesselation consistent horizontally to minimal area bounding box statring from upper-left corner
-    # of this bounding box
+    """
+    Direction of tesselation consistent horizontally to minimal area bounding box statring from upper-left corner
+    of this bounding box
+    """
     def bounding_box(self):
-        #
-        raport = open(os.path.join(os.path.dirname(__file__), "tests\\raport.txt"), 'w')
-        #
-
         az = [30, 90, 150, 210, 270, 330]
         max_min = []
         for coord in zip(*self.read_geom()):
@@ -118,7 +144,7 @@ class HexSimply(object):
         b = sqrt((x_ul-x_dl)**2 + (y_ul-y_dl)**2)
         vertical_cover = trunc((b-(self.tessera_width()/2)) /self.tessera_width()) + 1
         horizontal_cover = trunc((a-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
-        self.points_in_hex_coords = []
+        points_in_hex_coords = []
         id_hex = 0
         for i in range(horizontal_cover + 1):
             for j in range(vertical_cover + 1):
@@ -133,22 +159,28 @@ class HexSimply(object):
                         y = round((y_ul + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j - self.tessera_width()/2, 4)
                         hex_coords_temp.append([x, y])
                 for point_coords in self.polyline_coords:
+                    # Using Ray Casting Method
                     if self.ray_casting_method(hex_coords_temp, point_coords) == True:
-                        self.points_in_hex_coords.append([id_hex, point_coords[1], point_coords[2], point_coords[3]])
-                        #
-                        raport.write(str(self.points_in_hex_coords))
-                        raport.write("\n")
-                        #
+                        points_in_hex_coords.append([id_hex, point_coords[1], point_coords[2], point_coords[3]])
                 id_hex += 1
-        return arcpy.AddMessage(self.points_in_hex_coords)
+        # Using Vertex Clustering
+        cluster = self.vertex_clustering(points_in_hex_coords)
+        # Using Spatial Mean
+        mean_xy = self.spatial_mean(cluster, self.polyline_coords)
+        self.create_new_feature(mean_xy)
+        return
 
-    # direction of tesselation consistent with the direction of the longest section of the original polyline
-    # starting from the first point of this original polyline
+    """
+    Direction of tesselation consistent with the direction of the longest section of the original polyline
+    starting from the first point of this original polyline
+    """
     def direction_longest_section(self):
         return
 
-    # direction of tesselation consistent with the direction perpendicular to the direction of bisector of an angle,
-    # which vertex is simultaneously a global maximum of the original polyline
+    """
+    Direction of tesselation consistent with the direction perpendicular to the direction of bisector of an angle,
+    which vertex is simultaneously a global maximum of the original polyline
+    """
     def global_maximu(self):
         return
 
