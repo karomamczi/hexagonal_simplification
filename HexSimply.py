@@ -2,7 +2,7 @@
 # Filename: HexSimply.py                                                    #
 # Author: Karolina Mamczarz                                                 #
 # Institution: AGH University of Science and Technology in Cracow, Poland   #
-# Last update: 2017-07-24                                                   #
+# Last update: 2017-08-13                                                   #
 # Version: 1.0.0                                                            #
 # Description: #                                                            #
 # Class: HexSimply                                                          #
@@ -13,7 +13,7 @@
 
 import arcpy
 import os
-from math import sqrt, trunc, sin, cos, pi, atan2
+from math import sqrt, trunc, sin, cos, pi, atan2, fabs
 from sys import exit
 
 
@@ -121,6 +121,84 @@ class HexSimply(object):
         self.mean_xy_list.append(arcpy.Point(points_list[-1][2], points_list[-1][3]))
         return self.mean_xy_list
 
+    @staticmethod
+    def point_to_line_distance(initial_x, initial_y, set_of_coords, a, b, c):
+        d = 0.0
+        x_point = initial_x
+        y_point = initial_y
+        for point in set_of_coords:
+            distance = fabs(a*point[2]+b*point[3]+c) / sqrt(a**2 + b**2)
+            if distance > d:
+                d = distance
+                x_point = point[2]
+                y_point = point[3]
+        return d, x_point, y_point
+
+    @staticmethod
+    def point_to_line_distance_with_sides(initial_x, initial_y, set_of_coords, a, b, c):
+        result = {"d_one_side": 0.0,
+                  "x_point_one_side": initial_x,
+                  "y_point_one_side": initial_y,
+                  "d_other_side": 0.0,
+                  "x_point_other_side": initial_x,
+                  "y_point_other_side": initial_y}
+        distance_exception = None
+        x_exception = None
+        y_exception = None
+        for point in set_of_coords:
+            equation = a*point[2]+b*point[3]+c
+            if equation > 0:
+                distance = fabs(equation) / sqrt(a**2 + b**2)
+                if distance > result.get("d_one_side"):
+                    result.update({"d_one_side": distance, "x_point_one_side": point[2], "y_point_one_side": point[3]})
+            elif equation < 0:
+                distance = fabs(equation) / sqrt(a**2 + b**2)
+                if distance > result.get("d_other_side"):
+                    result.update({"d_other_side": distance, "x_point_other_side": point[2], "y_point_other_side": point[3]})
+            elif equation == 0:
+                distance_exception = fabs(equation) / sqrt(a**2 + b**2)
+                x_exception = point[2]
+                y_exception = point[3]
+        for k, v in dict(result).items():
+            if k == "d_one_side" and v == 0.0:
+                result.update({"d_one_side": distance_exception, "x_point_one_side": x_exception, "y_point_one_side": y_exception})
+            if k == "d_other_side" and v == 0.0:
+                result.update({"d_other_side": distance_exception, "x_point_other_side": x_exception, "y_point_other_side": y_exception})
+        return result
+
+    @staticmethod
+    def coefficients_linear_function(x1, y1, x2, y2):
+        a = (y2-y1) / (x2-x1)
+        b = y1 - a*x1
+        return a, b
+
+    @staticmethod
+    def coefficients_general_equation(a1, a2, b1, b2, c1, c2):
+        k = sqrt((a2**2 + b2**2) / (a1**2 + b1**2))
+        a_bisector_one = -(k*a1-a2) / (k*b1-b2)
+        b_bisector_one = -((k*c1-c2) / (k*b1-b2))
+        a_bisector_two = -(k*a1+a2) / (k*b1+b2)
+        b_bisector_two = -((k*c1+c2) / (k*b1+b2))
+        return a_bisector_one, b_bisector_one, a_bisector_two, b_bisector_two
+
+    @staticmethod
+    def intersection_vertices(coefficient_array):
+        xy_temp = []
+        for i in coefficient_array:
+            for j in coefficient_array:
+                w = i[0]*j[1]-j[0]*i[1]
+                if w != 0:
+                    wx = (-i[2])*j[1] - (-j[2])*i[1]
+                    wy = i[0]*(-j[2])-j[0]*(-i[2])
+                    x = wx/w
+                    y = wy/w
+                    xy_temp.append([x, y])
+        xy = []
+        for pair in xy_temp:
+            if pair not in xy:
+                xy.append(pair)
+        return xy
+
     def eliminate_self_crossing(self):
         return
 
@@ -162,7 +240,7 @@ class HexSimply(object):
         y_ul = y_ur        # y of upper-left corner
         a = sqrt((x_ul-x_ur)**2 + (y_ul-y_ur)**2)
         b = sqrt((x_ul-x_dl)**2 + (y_ul-y_dl)**2)
-        vertical_cover = trunc((b-(self.tessera_width()/2)) /self.tessera_width()) + 1
+        vertical_cover = trunc((b-(self.tessera_width()/2)) / self.tessera_width()) + 1
         horizontal_cover = trunc((a-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
         points_in_hex_coords = []
         id_hex = 0
@@ -180,7 +258,7 @@ class HexSimply(object):
                         hex_coords_temp.append([x, y])
                 for point_coords in polyline_coords:
                     # Using Ray Casting Method
-                    if self.ray_casting_method(hex_coords_temp, point_coords) == True:
+                    if self.ray_casting_method(hex_coords_temp, point_coords) is True:
                         points_in_hex_coords.append([id_hex, point_coords[1], point_coords[2], point_coords[3]])
                 id_hex += 1
         # Using Vertex Clustering
@@ -208,7 +286,7 @@ class HexSimply(object):
                 orient = atan2(dy01, dx01)
             else:
                 orient = atan2(dy01, dx01) + 2*pi
-            vertical_cover = trunc((b-(self.tessera_width()/2)) /self.tessera_width()) + 1
+            vertical_cover = trunc((b-(self.tessera_width()/2)) / self.tessera_width()) + 1
             horizontal_cover = trunc((a-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
             points_in_hex_coords = []
             id_hex = 0
@@ -238,7 +316,7 @@ class HexSimply(object):
                             hex_coords_temp.append([x, y])
                     for point_coords in polyline_coords:
                         # Using Ray Casting Method
-                        if self.ray_casting_method(hex_coords_temp, point_coords) == True:
+                        if self.ray_casting_method(hex_coords_temp, point_coords) is True:
                             points_in_hex_coords.append([id_hex, point_coords[1], point_coords[2], point_coords[3]])
                     id_hex += 1
         else:
@@ -246,7 +324,7 @@ class HexSimply(object):
                 orient = atan2(dy12, dy12)
             else:
                 orient = atan2(dy12, dy12) + 2*pi
-            vertical_cover = trunc((b-(self.tessera_width()/2)) /self.tessera_width()) + 1
+            vertical_cover = trunc((b-(self.tessera_width()/2)) / self.tessera_width()) + 1
             horizontal_cover = trunc((a-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
             points_in_hex_coords = []
             id_hex = 0
@@ -276,7 +354,7 @@ class HexSimply(object):
                             hex_coords_temp.append([x, y])
                     for point_coords in polyline_coords:
                         # Using Ray Casting Method
-                        if self.ray_casting_method(hex_coords_temp, point_coords) == True:
+                        if self.ray_casting_method(hex_coords_temp, point_coords) is True:
                             points_in_hex_coords.append([id_hex, point_coords[1], point_coords[2], point_coords[3]])
                     id_hex += 1
         # Using Vertex Clustering
@@ -303,10 +381,32 @@ class HexSimply(object):
         return
 
     """
-    Direction of tesselation consistent with the direction perpendicular to the direction of bisector of an angle,
-    which vertex is simultaneously a global maximum of the original polyline
+    Direction of tessellation consistent with the directions of two bisectors of vertically opposite angles,
+    which vertex is simultaneously a furthest point of the original polylin to the line which joins first and last
+    point. Angles are created with lines:
+        - first point - furthest vertex,
+        - furthest vertex - last point.
     """
-    def global_maximum(self):
+    def furthest_point(self):
+        self.set_path()
+        polyline_coords = self.read_geom(self.original)
+        x_first = polyline_coords[0][2]
+        y_first = polyline_coords[0][3]
+        x_last = polyline_coords[-1][2]
+        y_last = polyline_coords[-1][3]
+        a_m, b_m = self.coefficients_linear_function(x_first, y_first, x_last, y_last)
+        d_major_line, x_major_line, y_major_line = self.point_to_line_distance(x_first, y_first, polyline_coords, a_m, -1, b_m)
+        a_first, b_first = self.coefficients_linear_function(x_first, y_first, x_major_line, y_major_line)
+        a_last, b_last = self.coefficients_linear_function(x_major_line, y_major_line, x_last, y_last)
+        a_b1, b_b1, a_b2, b_b2 = self.coefficients_general_equation(a_first, a_last, -1, -1, b_first, b_last)
+        result_b1 = self.point_to_line_distance_with_sides(x_first, y_first, polyline_coords, a_b1, -1, b_b1)
+        result_b2 = self.point_to_line_distance_with_sides(x_first, y_first, polyline_coords, a_b2, -1, b_b2)
+        result_b1_b1 = result_b1["y_point_one_side"] - a_b1*result_b1["x_point_one_side"]
+        result_b1_b2 = result_b1["y_point_other_side"] - a_b1*result_b1["x_point_other_side"]
+        result_b2_b1 = result_b2["y_point_one_side"] - a_b2*result_b2["x_point_one_side"]
+        result_b2_b2 = result_b2["y_point_other_side"] - a_b2*result_b2["x_point_other_side"]
+        lines_coefficients = [[a_b1, -1, result_b1_b1], [a_b1, -1, result_b1_b2], [a_b2, -1, result_b2_b1], [a_b2, -1, result_b2_b2]]
+        xy_inter = self.intersection_vertices(lines_coefficients)
         return
 
     def choose_method(self):
@@ -316,8 +416,8 @@ class HexSimply(object):
             self.minimal_rectangle_area()
         elif self.method == 'FROM MINIMAL RECTANGLE WIDTH':
             self.minimal_rectangle_width()
-        elif self.method == 'FROM GLOBAL MAXIMUM':
-            self.global_maximum()
+        elif self.method == 'FROM THE FURTHEST POINT OF POLYLINE':
+            self.furthest_point()
 
 
 if __name__ == '__main__':
