@@ -2,7 +2,7 @@
 # Filename: HexSimply.py                                                    #
 # Author: Karolina Mamczarz                                                 #
 # Institution: AGH University of Science and Technology in Cracow, Poland   #
-# Last update: 2017-08-13                                                   #
+# Last update: 2017-08-21                                                   #
 # Version: 1.0.0                                                            #
 # Description: #                                                            #
 # Class: HexSimply                                                          #
@@ -189,7 +189,7 @@ class HexSimply(object):
                 w = i[0]*j[1]-j[0]*i[1]
                 if w != 0:
                     wx = (-i[2])*j[1] - (-j[2])*i[1]
-                    wy = i[0]*(-j[2])-j[0]*(-i[2])
+                    wy = i[0]*(-j[2]) - j[0]*(-i[2])
                     x = wx/w
                     y = wy/w
                     xy_temp.append([x, y])
@@ -199,10 +199,12 @@ class HexSimply(object):
                 xy.append(pair)
         return xy
 
-    def eliminate_self_crossing(self):
-        return
+    @staticmethod
+    def calculate_distance(x1, x2, y1, y2):
+        d = sqrt((x2-x1)**2 + (y2-y1)**2)
+        return d
 
-    def statistics(self):
+    def eliminate_self_crossing(self):
         return
 
     def set_path(self):
@@ -238,8 +240,8 @@ class HexSimply(object):
         y_dl = max_min[7]  # y of down-left corner
         x_ul = x_dl        # x of upper-left corner
         y_ul = y_ur        # y of upper-left corner
-        a = sqrt((x_ul-x_ur)**2 + (y_ul-y_ur)**2)
-        b = sqrt((x_ul-x_dl)**2 + (y_ul-y_dl)**2)
+        a = self.calculate_distance(x_ur, x_ul, y_ur, y_ul)
+        b = self.calculate_distance(x_dl, x_ul, y_dl, y_ul)
         vertical_cover = trunc((b-(self.tessera_width()/2)) / self.tessera_width()) + 1
         horizontal_cover = trunc((a-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
         points_in_hex_coords = []
@@ -268,19 +270,14 @@ class HexSimply(object):
         self.create_new_feature(mean_xy)
         return
 
-    def minimal_rectangle_general(self, method):
-        self.set_path()
-        polyline_coords = self.read_geom(self.original)
+    def rectangle_general(self, data, polyline_coords):
         az = [30, 90, 150, 210, 270, 330]
-        temp_rect_area = "in_memory\\rect_area"
-        arcpy.MinimumBoundingGeometry_management(self.original, temp_rect_area, method, "ALL")
-        data = self.read_geom(temp_rect_area)
         dx01 = data[1][2]-data[0][2]
         dy01 = data[1][3]-data[0][3]
         dx12 = data[2][2]-data[1][2]
         dy12 = data[2][3]-data[1][3]
-        a = sqrt(dx01**2 + dy01**2)
-        b = sqrt(dx12**2 + dy12**2)
+        a = self.calculate_distance(data[0][2], data[1][2], data[0][3], data[1][3])
+        b = self.calculate_distance(data[1][2], data[2][2], data[1][3], data[2][3])
         if a > b:
             if (dx01 > 0 and dy01 > 0) or (dx01 < 0 and dy01 > 0):
                 orient = atan2(dy01, dx01)
@@ -321,11 +318,11 @@ class HexSimply(object):
                     id_hex += 1
         else:
             if (dx12 > 0 and dy12 > 0) or (dx12 < 0 and dy12 > 0):
-                orient = atan2(dy12, dy12)
+                orient = atan2(dy12, dx12)
             else:
-                orient = atan2(dy12, dy12) + 2*pi
-            vertical_cover = trunc((b-(self.tessera_width()/2)) / self.tessera_width()) + 1
-            horizontal_cover = trunc((a-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
+                orient = atan2(dy12, dx12) + 2*pi
+            vertical_cover = trunc((a-(self.tessera_width()/2)) / self.tessera_width()) + 1
+            horizontal_cover = trunc((b-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
             points_in_hex_coords = []
             id_hex = 0
             for i in range(horizontal_cover + 1):
@@ -369,7 +366,12 @@ class HexSimply(object):
     of the rectangle
     """
     def minimal_rectangle_area(self):
-        self.minimal_rectangle_general("RECTANGLE_BY_AREA")
+        self.set_path()
+        polyline_coords = self.read_geom(self.original)
+        temp_rect_area = "in_memory\\rect_area"
+        arcpy.MinimumBoundingGeometry_management(self.original, temp_rect_area, "RECTANGLE_BY_AREA", "ALL")
+        data = self.read_geom(temp_rect_area)
+        self.rectangle_general(data, polyline_coords)
         return
 
     """
@@ -377,12 +379,17 @@ class HexSimply(object):
     of the rectangle
     """
     def minimal_rectangle_width(self):
-        self.minimal_rectangle_general("RECTANGLE_BY_WIDTH")
+        self.set_path()
+        polyline_coords = self.read_geom(self.original)
+        temp_rect_area = "in_memory\\rect_area"
+        arcpy.MinimumBoundingGeometry_management(self.original, temp_rect_area, "RECTANGLE_BY_WIDTH", "ALL")
+        data = self.read_geom(temp_rect_area)
+        self.rectangle_general(data, polyline_coords)
         return
 
     """
     Direction of tessellation consistent with the directions of two bisectors of vertically opposite angles,
-    which vertex is simultaneously a furthest point of the original polylin to the line which joins first and last
+    which vertex is simultaneously a furthest point of the original polyline to the line which joins first and last
     point. Angles are created with lines:
         - first point - furthest vertex,
         - furthest vertex - last point.
@@ -401,12 +408,29 @@ class HexSimply(object):
         a_b1, b_b1, a_b2, b_b2 = self.coefficients_general_equation(a_first, a_last, -1, -1, b_first, b_last)
         result_b1 = self.point_to_line_distance_with_sides(x_first, y_first, polyline_coords, a_b1, -1, b_b1)
         result_b2 = self.point_to_line_distance_with_sides(x_first, y_first, polyline_coords, a_b2, -1, b_b2)
-        result_b1_b1 = result_b1["y_point_one_side"] - a_b1*result_b1["x_point_one_side"]
-        result_b1_b2 = result_b1["y_point_other_side"] - a_b1*result_b1["x_point_other_side"]
-        result_b2_b1 = result_b2["y_point_one_side"] - a_b2*result_b2["x_point_one_side"]
-        result_b2_b2 = result_b2["y_point_other_side"] - a_b2*result_b2["x_point_other_side"]
-        lines_coefficients = [[a_b1, -1, result_b1_b1], [a_b1, -1, result_b1_b2], [a_b2, -1, result_b2_b1], [a_b2, -1, result_b2_b2]]
+        lines_coefficients = [[a_b1, -1, result_b1["y_point_one_side"] - a_b1*result_b1["x_point_one_side"]],
+                              [a_b1, -1, result_b1["y_point_other_side"] - a_b1*result_b1["x_point_other_side"]],
+                              [a_b2, -1, result_b2["y_point_one_side"] - a_b2*result_b2["x_point_one_side"]],
+                              [a_b2, -1, result_b2["y_point_other_side"] - a_b2*result_b2["x_point_other_side"]]]
         xy_inter = self.intersection_vertices(lines_coefficients)
+        xy_for_side_temp = []
+        for xy1 in xy_inter:
+            for xy2 in xy_inter:
+                dxy_o = self.calculate_distance(xy1[0], xy2[0], xy1[1], xy2[1])
+                if dxy_o != 0.0:
+                    xy_for_side_temp.append([dxy_o, xy1[0], xy1[1], xy2[0], xy2[1]])
+            break
+        del_id = max(xy_for_side_temp, key=lambda item: item[0])
+        xy_for_side = []
+        for element in xy_for_side_temp:
+            if element == del_id:
+                xy_for_side_temp.remove(element)
+            else:
+                xy_for_side.append([0, 0, element[1], element[2]])
+                xy_for_side.append([0, 0, element[3], element[4]])
+        xy_for_side.pop(0)
+        arcpy.AddMessage(xy_for_side)
+        self.rectangle_general(xy_for_side, polyline_coords)
         return
 
     def choose_method(self):
