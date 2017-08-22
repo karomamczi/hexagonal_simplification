@@ -2,7 +2,7 @@
 # Filename: HexSimply.py                                                    #
 # Author: Karolina Mamczarz                                                 #
 # Institution: AGH University of Science and Technology in Cracow, Poland   #
-# Last update: 2017-08-21                                                   #
+# Last update: 2017-08-23                                                   #
 # Version: 1.0.0                                                            #
 # Description: #                                                            #
 # Class: HexSimply                                                          #
@@ -27,10 +27,6 @@ class HexSimply(object):
         self.method = method
         self.workspace = os.path.dirname(self.original)  # POTEM DO WYRZUCENIA
         self.choose_method()
-
-    def sort(self):
-        #ewentualnie skrypt na dissolve NIEEEEEEEEEEE
-        return
 
     def read_geom(self, shape):
         with arcpy.da.SearchCursor(shape, ["SHAPE@"]) as cursor:
@@ -204,7 +200,9 @@ class HexSimply(object):
         d = sqrt((x2-x1)**2 + (y2-y1)**2)
         return d
 
-    def eliminate_self_crossing(self):
+    def eliminate_self_crossing(self, simplified_polyline):
+        tangled_polyline_coords = self.read_geom(simplified_polyline)
+
         return
 
     def set_path(self):
@@ -271,6 +269,10 @@ class HexSimply(object):
         return
 
     def rectangle_general(self, data, polyline_coords):
+        raport = open(os.path.join(os.path.dirname(__file__), "tests\\raport.txt"), 'w')
+        raport2 = open(os.path.join(os.path.dirname(__file__), "tests\\raport2.txt"), 'w')
+        raport2.write('data '+str(data)+'\n')
+        raport.write("x;y\n")
         az = [30, 90, 150, 210, 270, 330]
         dx01 = data[1][2]-data[0][2]
         dy01 = data[1][3]-data[0][3]
@@ -278,6 +280,8 @@ class HexSimply(object):
         dy12 = data[2][3]-data[1][3]
         a = self.calculate_distance(data[0][2], data[1][2], data[0][3], data[1][3])
         b = self.calculate_distance(data[1][2], data[2][2], data[1][3], data[2][3])
+        raport2.write('a '+str(a)+'\n')
+        raport2.write('b '+str(b)+'\n')
         if a > b:
             if (dx01 > 0 and dy01 > 0) or (dx01 < 0 and dy01 > 0):
                 orient = atan2(dy01, dx01)
@@ -301,6 +305,7 @@ class HexSimply(object):
                             x = x_bis + data[0][2]
                             y = y_bis + data[0][3]
                             hex_coords_temp.append([x, y])
+                            raport.write(str(x)+';'+str(y)+'\n')
                         else:
                             xpp = round((data[0][2] + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
                             ypp = round((data[0][3] + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j - self.tessera_width()/2, 4)
@@ -311,6 +316,7 @@ class HexSimply(object):
                             x = x_bis + data[0][2]
                             y = y_bis + data[0][3]
                             hex_coords_temp.append([x, y])
+                            raport.write(str(x)+';'+str(y)+'\n')
                     for point_coords in polyline_coords:
                         # Using Ray Casting Method
                         if self.ray_casting_method(hex_coords_temp, point_coords) is True:
@@ -321,6 +327,7 @@ class HexSimply(object):
                 orient = atan2(dy12, dx12)
             else:
                 orient = atan2(dy12, dx12) + 2*pi
+            raport2.write(str(orient*180/pi)+'\n')
             vertical_cover = trunc((a-(self.tessera_width()/2)) / self.tessera_width()) + 1
             horizontal_cover = trunc((b-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
             points_in_hex_coords = []
@@ -429,7 +436,26 @@ class HexSimply(object):
                 xy_for_side.append([0, 0, element[1], element[2]])
                 xy_for_side.append([0, 0, element[3], element[4]])
         xy_for_side.pop(0)
-        arcpy.AddMessage(xy_for_side)
+        #
+        #
+        dx1 = xy_for_side[1][2]-xy_for_side[0][2]
+        dy1 = xy_for_side[1][3]-xy_for_side[0][3]
+        dx2 = xy_for_side[2][2]-xy_for_side[1][2]
+        dy2 = xy_for_side[2][3]-xy_for_side[1][3]
+        if (dx1 > 0 and dy1 > 0) or (dx1 < 0 and dy1 > 0):
+            orient1 = atan2(dy1, dx1)*180/pi
+        else:
+            orient1 = (atan2(dy1, dx1) + 2*pi)*180/pi
+
+        if (dx2 > 0 and dy2 > 0) or (dx2 < 0 and dy2 > 0):
+            orient2 = atan2(dy2, dx2)*180/pi
+        else:
+            orient2 = (atan2(dy2, dx2) + 2*pi)*180/pi
+        angle = orient1-orient2
+        if angle > 90:
+           xy_for_side[2], xy_for_side[0]  = xy_for_side[0], xy_for_side[2]
+        #
+        #
         self.rectangle_general(xy_for_side, polyline_coords)
         return
 
