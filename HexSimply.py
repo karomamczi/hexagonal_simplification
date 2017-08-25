@@ -2,7 +2,7 @@
 # Filename: HexSimply.py                                                    #
 # Author: Karolina Mamczarz                                                 #
 # Institution: AGH University of Science and Technology in Cracow, Poland   #
-# Last update: 2017-08-23                                                   #
+# Last update: 2017-08-24                                                   #
 # Version: 1.0.0                                                            #
 # Description: #                                                            #
 # Class: HexSimply                                                          #
@@ -25,21 +25,21 @@ class HexSimply(object):
         self.l = l / 1000
         self.s = s
         self.method = method
-        self.workspace = os.path.dirname(self.original)  # POTEM DO WYRZUCENIA
         self.choose_method()
 
-    def read_geom(self, shape):
+    @staticmethod
+    def read_geom(shape):
         with arcpy.da.SearchCursor(shape, ["SHAPE@"]) as cursor:
-            self.shape_coords = []
+            shape_coords = []
             partnum = 0
             for row in cursor:
                 for part in row[0]:
                     pntnum = 0
                     for pnt in part:
-                        self.shape_coords.append([partnum, pntnum, pnt.X, pnt.Y])
+                        shape_coords.append([partnum, pntnum, pnt.X, pnt.Y])
                         pntnum += 1
                     partnum += 1
-        return self.shape_coords
+        return shape_coords
 
     @staticmethod
     def read_geom_attr_rectangle(rectangle):
@@ -85,37 +85,39 @@ class HexSimply(object):
             p1x, p1y = p2x, p2y
         return inside
 
-    def vertex_clustering(self, points_list):
+    @staticmethod
+    def vertex_clustering(points_list):
         points_list.sort(key=lambda id_point: id_point[1])
-        self.cluster = []
+        cluster = []
         prev = 0
         for point in points_list:
             if point[0] - prev != 0:
                 prev = point[0]
-                self.cluster.append([point])
+                cluster.append([point])
             elif point[0] == 0:
                 idx = points_list.index(point)
                 if idx == 0:
                     prev = point[0]
-                    self.cluster.append([point])
+                    cluster.append([point])
                 else:
-                    self.cluster[-1].append(point)
+                    cluster[-1].append(point)
             else:
-                self.cluster[-1].append(point)
-        return self.cluster
+                cluster[-1].append(point)
+        return cluster
 
-    def spatial_mean(self, cluster_list, points_list):
-        self.mean_xy_list = []
-        self.mean_xy_list.append(arcpy.Point(points_list[0][2], points_list[0][3]))
+    @staticmethod
+    def spatial_mean(cluster_list, points_list):
+        mean_xy_list = []
+        mean_xy_list.append([points_list[0][2], points_list[0][3]])
         for one_cluster in cluster_list:
             for xy in one_cluster:
                 n = one_cluster.index(xy) + 1
             sums = [sum(i) for i in zip(*one_cluster)]
             mean_x = sums[2]/n
             mean_y = sums[3]/n
-            self.mean_xy_list.append(arcpy.Point(mean_x, mean_y))
-        self.mean_xy_list.append(arcpy.Point(points_list[-1][2], points_list[-1][3]))
-        return self.mean_xy_list
+            mean_xy_list.append([mean_x, mean_y])
+        mean_xy_list.append([points_list[-1][2], points_list[-1][3]])
+        return mean_xy_list
 
     @staticmethod
     def point_to_line_distance(initial_x, initial_y, set_of_coords, a, b, c):
@@ -200,9 +202,16 @@ class HexSimply(object):
         d = sqrt((x2-x1)**2 + (y2-y1)**2)
         return d
 
-    def eliminate_self_crossing(self, simplified_polyline):
-        tangled_polyline_coords = self.read_geom(simplified_polyline)
+    @staticmethod
+    def azimuth(dx, dy):
+        if (dx > 0 and dy > 0) or (dx < 0 and dy > 0):
+            azimuth = atan2(dy, dx)
+        else:
+            azimuth = atan2(dy, dx) + 2*pi
+        return azimuth
 
+    @staticmethod
+    def eliminate_self_crossing(maybe_tangled_polyline):
         return
 
     def set_path(self):
@@ -217,7 +226,11 @@ class HexSimply(object):
 
     def create_new_feature(self, new_polyline_coords):
         with arcpy.da.InsertCursor(self.full_pathname, ["SHAPE@"]) as cursor:
-            cursor.insertRow([arcpy.Polyline(arcpy.Array(new_polyline_coords))])
+            arc_point_list = []
+            for point in new_polyline_coords:
+                arc_point = arcpy.Point(point[0], point[1])
+                arc_point_list.append(arc_point)
+            cursor.insertRow([arcpy.Polyline(arcpy.Array(arc_point_list))])
         return
 
     """
@@ -248,7 +261,7 @@ class HexSimply(object):
             for j in range(vertical_cover + 1):
                 hex_coords_temp = []
                 for i_az in az:
-                    if (i % 2 == 0):
+                    if i % 2 == 0:
                         x = round((x_ul + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
                         y = round((y_ul + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j, 4)
                         hex_coords_temp.append([x, y])
@@ -271,8 +284,6 @@ class HexSimply(object):
     def rectangle_general(self, data, polyline_coords):
         raport = open(os.path.join(os.path.dirname(__file__), "tests\\raport.txt"), 'w')
         raport2 = open(os.path.join(os.path.dirname(__file__), "tests\\raport2.txt"), 'w')
-        raport2.write('data '+str(data)+'\n')
-        raport.write("x;y\n")
         az = [30, 90, 150, 210, 270, 330]
         dx01 = data[1][2]-data[0][2]
         dy01 = data[1][3]-data[0][3]
@@ -280,13 +291,8 @@ class HexSimply(object):
         dy12 = data[2][3]-data[1][3]
         a = self.calculate_distance(data[0][2], data[1][2], data[0][3], data[1][3])
         b = self.calculate_distance(data[1][2], data[2][2], data[1][3], data[2][3])
-        raport2.write('a '+str(a)+'\n')
-        raport2.write('b '+str(b)+'\n')
         if a > b:
-            if (dx01 > 0 and dy01 > 0) or (dx01 < 0 and dy01 > 0):
-                orient = atan2(dy01, dx01)
-            else:
-                orient = atan2(dy01, dx01) + 2*pi
+            orient = self.azimuth(dx01, dy01)
             vertical_cover = trunc((b-(self.tessera_width()/2)) / self.tessera_width()) + 1
             horizontal_cover = trunc((a-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
             points_in_hex_coords = []
@@ -295,7 +301,7 @@ class HexSimply(object):
                 for j in range(vertical_cover + 1):
                     hex_coords_temp = []
                     for i_az in az:
-                        if (i % 2 == 0):
+                        if i % 2 == 0:
                             xpp = round((data[0][2] + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
                             ypp = round((data[0][3] + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j, 4)
                             x_prim = xpp - data[0][2]
@@ -305,7 +311,6 @@ class HexSimply(object):
                             x = x_bis + data[0][2]
                             y = y_bis + data[0][3]
                             hex_coords_temp.append([x, y])
-                            raport.write(str(x)+';'+str(y)+'\n')
                         else:
                             xpp = round((data[0][2] + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
                             ypp = round((data[0][3] + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j - self.tessera_width()/2, 4)
@@ -316,18 +321,13 @@ class HexSimply(object):
                             x = x_bis + data[0][2]
                             y = y_bis + data[0][3]
                             hex_coords_temp.append([x, y])
-                            raport.write(str(x)+';'+str(y)+'\n')
                     for point_coords in polyline_coords:
                         # Using Ray Casting Method
                         if self.ray_casting_method(hex_coords_temp, point_coords) is True:
                             points_in_hex_coords.append([id_hex, point_coords[1], point_coords[2], point_coords[3]])
                     id_hex += 1
         else:
-            if (dx12 > 0 and dy12 > 0) or (dx12 < 0 and dy12 > 0):
-                orient = atan2(dy12, dx12)
-            else:
-                orient = atan2(dy12, dx12) + 2*pi
-            raport2.write(str(orient*180/pi)+'\n')
+            orient = self.azimuth(dx12, dy12)
             vertical_cover = trunc((a-(self.tessera_width()/2)) / self.tessera_width()) + 1
             horizontal_cover = trunc((b-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
             points_in_hex_coords = []
@@ -336,7 +336,7 @@ class HexSimply(object):
                 for j in range(vertical_cover + 1):
                     hex_coords_temp = []
                     for i_az in az:
-                        if (i % 2 == 0):
+                        if i % 2 == 0:
                             xpp = round((data[1][2] + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
                             ypp = round((data[1][3] + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j, 4)
                             x_prim = xpp - data[1][2]
@@ -436,26 +436,13 @@ class HexSimply(object):
                 xy_for_side.append([0, 0, element[1], element[2]])
                 xy_for_side.append([0, 0, element[3], element[4]])
         xy_for_side.pop(0)
-        #
-        #
         dx1 = xy_for_side[1][2]-xy_for_side[0][2]
         dy1 = xy_for_side[1][3]-xy_for_side[0][3]
         dx2 = xy_for_side[2][2]-xy_for_side[1][2]
         dy2 = xy_for_side[2][3]-xy_for_side[1][3]
-        if (dx1 > 0 and dy1 > 0) or (dx1 < 0 and dy1 > 0):
-            orient1 = atan2(dy1, dx1)*180/pi
-        else:
-            orient1 = (atan2(dy1, dx1) + 2*pi)*180/pi
-
-        if (dx2 > 0 and dy2 > 0) or (dx2 < 0 and dy2 > 0):
-            orient2 = atan2(dy2, dx2)*180/pi
-        else:
-            orient2 = (atan2(dy2, dx2) + 2*pi)*180/pi
-        angle = orient1-orient2
-        if angle > 90:
-           xy_for_side[2], xy_for_side[0]  = xy_for_side[0], xy_for_side[2]
-        #
-        #
+        angle = self.azimuth(dx1, dy1) - self.azimuth(dx2, dy2)
+        if angle > pi/2:
+            xy_for_side[2], xy_for_side[0] = xy_for_side[0], xy_for_side[2]
         self.rectangle_general(xy_for_side, polyline_coords)
         return
 
