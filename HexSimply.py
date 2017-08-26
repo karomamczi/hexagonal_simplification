@@ -108,6 +108,7 @@ class HexSimply(object):
     @staticmethod
     def spatial_mean(cluster_list, points_list):
         mean_xy_list = []
+        mean_xy_list_clean = []
         mean_xy_list.append([points_list[0][2], points_list[0][3]])
         for one_cluster in cluster_list:
             for xy in one_cluster:
@@ -117,7 +118,10 @@ class HexSimply(object):
             mean_y = sums[3]/n
             mean_xy_list.append([mean_x, mean_y])
         mean_xy_list.append([points_list[-1][2], points_list[-1][3]])
-        return mean_xy_list
+        for duplicate in mean_xy_list:
+            if duplicate not in mean_xy_list_clean:
+                mean_xy_list_clean.append(duplicate)
+        return mean_xy_list_clean
 
     @staticmethod
     def point_to_line_distance(initial_x, initial_y, set_of_coords, a, b, c):
@@ -204,7 +208,7 @@ class HexSimply(object):
 
     @staticmethod
     def azimuth(dx, dy):
-        if (dx > 0 and dy > 0) or (dx < 0 and dy > 0):
+        if (dx > 0 and dy > 0) or dy > 0 > dx:
             azimuth = atan2(dy, dx)
         else:
             azimuth = atan2(dy, dx) + 2*pi
@@ -212,7 +216,7 @@ class HexSimply(object):
 
     @staticmethod
     def eliminate_self_crossing(maybe_tangled_line):
-        intersection_list = []
+        points_to_revert = []
         points = len(maybe_tangled_line)
         i_point = 0
         while i_point < points - 3:
@@ -246,11 +250,12 @@ class HexSimply(object):
                 xp_in_range = xp_range_first_seg and xp_range_second_seg
                 yp_in_range = yp_range_first_seg and yp_range_second_seg
                 if xp_in_range and yp_in_range:
-                    intersection_list.append([xp, yp])        
+                    points_to_revert.append([i_point + 1, j_point])
                 j_point += 1
             i_point += 1
-        arcpy.AddMessage(str(intersection_list))
-        return
+        for reverse_pair in points_to_revert:
+            maybe_tangled_line[reverse_pair[0]], maybe_tangled_line[reverse_pair[1]] = maybe_tangled_line[reverse_pair[1]], maybe_tangled_line[reverse_pair[0]]
+        return maybe_tangled_line
 
     def set_path(self):
         path, file = os.path.split(self.simplified)
@@ -316,10 +321,8 @@ class HexSimply(object):
         cluster = self.vertex_clustering(points_in_hex_coords)
         # Using Spatial Mean
         mean_xy = self.spatial_mean(cluster, polyline_coords)
-        # Detecting self-crossing
-        self.eliminate_self_crossing(mean_xy)
-        # Creating simplified polyline
-        self.create_new_feature(mean_xy)
+        # Detecting self-crossing and creating simplified polyline
+        self.create_new_feature(self.eliminate_self_crossing(mean_xy))
         return
 
     def rectangle_general(self, data, polyline_coords):
@@ -404,10 +407,8 @@ class HexSimply(object):
         cluster = self.vertex_clustering(points_in_hex_coords)
         # Using Spatial Mean
         mean_xy = self.spatial_mean(cluster, polyline_coords)
-        # Detecting self-crossing
-        self.eliminate_self_crossing(mean_xy)
-        # Creating simplified polyline
-        self.create_new_feature(mean_xy)
+        # Detecting self-crossing and creating simplified polyline
+        self.create_new_feature(self.eliminate_self_crossing(mean_xy))
         return
 
     """
