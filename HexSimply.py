@@ -211,7 +211,45 @@ class HexSimply(object):
         return azimuth
 
     @staticmethod
-    def eliminate_self_crossing(maybe_tangled_polyline):
+    def eliminate_self_crossing(maybe_tangled_line):
+        intersection_list = []
+        points = len(maybe_tangled_line)
+        i_point = 0
+        while i_point < points - 3:
+            j_point = i_point + 2
+            while j_point < points - 1:
+                dx_ab = maybe_tangled_line[i_point + 1][0] - maybe_tangled_line[i_point][0]
+                dx_ac = maybe_tangled_line[j_point][0] - maybe_tangled_line[i_point][0]
+                dx_cd = maybe_tangled_line[j_point + 1][0] - maybe_tangled_line[j_point][0]
+                dy_ab = maybe_tangled_line[i_point + 1][1] - maybe_tangled_line[i_point][1]
+                dy_ac = maybe_tangled_line[j_point][1] - maybe_tangled_line[i_point][1]
+                dy_cd = maybe_tangled_line[j_point + 1][1] - maybe_tangled_line[j_point][1]
+                k = (dx_ac * dy_cd - dx_cd * dy_ac) / (dx_ab * dy_cd - dx_cd * dy_ab)
+                xp = maybe_tangled_line[i_point][0] + k*dx_ab
+                yp = maybe_tangled_line[i_point][1] + k*dy_ab
+                if maybe_tangled_line[i_point + 1][0] - maybe_tangled_line[i_point][0] > 0:
+                    xp_range_first_seg = maybe_tangled_line[i_point][0] < xp < maybe_tangled_line[i_point + 1][0]
+                else:
+                    xp_range_first_seg = maybe_tangled_line[i_point][0] > xp > maybe_tangled_line[i_point + 1][0]
+                if maybe_tangled_line[j_point + 1][0] - maybe_tangled_line[j_point][0] > 0:
+                    xp_range_second_seg = maybe_tangled_line[j_point][0] < xp < maybe_tangled_line[j_point + 1][0]
+                else:
+                    xp_range_second_seg = maybe_tangled_line[j_point][0] > xp > maybe_tangled_line[j_point + 1][0]
+                if maybe_tangled_line[i_point + 1][1] - maybe_tangled_line[i_point][1] > 0:
+                    yp_range_first_seg = maybe_tangled_line[i_point][1] < yp < maybe_tangled_line[i_point + 1][1]
+                else:
+                    yp_range_first_seg = maybe_tangled_line[i_point][1] > yp > maybe_tangled_line[i_point + 1][1]
+                if maybe_tangled_line[j_point + 1][1] - maybe_tangled_line[j_point][1] > 0:
+                    yp_range_second_seg = maybe_tangled_line[j_point][1] < yp < maybe_tangled_line[j_point + 1][1]
+                else:
+                    yp_range_second_seg = maybe_tangled_line[j_point][1] > yp > maybe_tangled_line[j_point + 1][1]
+                xp_in_range = xp_range_first_seg and xp_range_second_seg
+                yp_in_range = yp_range_first_seg and yp_range_second_seg
+                if xp_in_range and yp_in_range:
+                    intersection_list.append([xp, yp])        
+                j_point += 1
+            i_point += 1
+        arcpy.AddMessage(str(intersection_list))
         return
 
     def set_path(self):
@@ -278,12 +316,13 @@ class HexSimply(object):
         cluster = self.vertex_clustering(points_in_hex_coords)
         # Using Spatial Mean
         mean_xy = self.spatial_mean(cluster, polyline_coords)
+        # Detecting self-crossing
+        self.eliminate_self_crossing(mean_xy)
+        # Creating simplified polyline
         self.create_new_feature(mean_xy)
         return
 
     def rectangle_general(self, data, polyline_coords):
-        raport = open(os.path.join(os.path.dirname(__file__), "tests\\raport.txt"), 'w')
-        raport2 = open(os.path.join(os.path.dirname(__file__), "tests\\raport2.txt"), 'w')
         az = [30, 90, 150, 210, 270, 330]
         dx01 = data[1][2]-data[0][2]
         dy01 = data[1][3]-data[0][3]
@@ -365,6 +404,9 @@ class HexSimply(object):
         cluster = self.vertex_clustering(points_in_hex_coords)
         # Using Spatial Mean
         mean_xy = self.spatial_mean(cluster, polyline_coords)
+        # Detecting self-crossing
+        self.eliminate_self_crossing(mean_xy)
+        # Creating simplified polyline
         self.create_new_feature(mean_xy)
         return
 
