@@ -2,7 +2,7 @@
 # Filename: HexSimply.py                                                    #
 # Author: Karolina Mamczarz                                                 #
 # Institution: AGH University of Science and Technology in Cracow, Poland   #
-# Last update: 2017-08-24                                                   #
+# Last update: 2017-09-02                                                   #
 # Version: 1.0.0                                                            #
 # Description: #                                                            #
 # Class: HexSimply                                                          #
@@ -288,14 +288,14 @@ class HexSimply(object):
         for coord in zip(*polyline_coords):
             max_min.append(max(coord))
             max_min.append(min(coord))
-        x_ur = max_min[4]  # x of upper-right corner
-        y_ur = max_min[6]  # y of upper-right corner
-        x_dl = max_min[5]  # x of down-left corner
-        y_dl = max_min[7]  # y of down-left corner
-        x_ul = x_dl        # x of upper-left corner
-        y_ul = y_ur        # y of upper-left corner
-        a = self.calculate_distance(x_ur, x_ul, y_ur, y_ul)
-        b = self.calculate_distance(x_dl, x_ul, y_dl, y_ul)
+        x_lr = max_min[4]  # x of lower-right corner
+        y_lr = max_min[7]  # y of lower-right corner
+        x_ll = max_min[5]  # x of lower-left corner
+        y_ll = max_min[7]  # y of lower-left corner
+        x_ul = max_min[5]  # x of upper-left corner
+        y_ul = max_min[6]  # y of upper-left corner
+        a = self.calculate_distance(x_lr, x_ll, y_lr, y_ll)
+        b = self.calculate_distance(x_ll, x_ul, y_ll, y_ul)
         vertical_cover = trunc((b-(self.tessera_width()/2)) / self.tessera_width()) + 1
         horizontal_cover = trunc((a-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
         points_in_hex_coords = []
@@ -325,16 +325,10 @@ class HexSimply(object):
         self.create_new_feature(self.eliminate_self_crossing(mean_xy))
         return
 
-    def rectangle_general(self, data, polyline_coords):
+    def oriented_rectangle(self, a, b, x0, x1, x2, y0, y1, y2, polyline_coords):
         az = [30, 90, 150, 210, 270, 330]
-        dx01 = data[1][2]-data[0][2]
-        dy01 = data[1][3]-data[0][3]
-        dx12 = data[2][2]-data[1][2]
-        dy12 = data[2][3]-data[1][3]
-        a = self.calculate_distance(data[0][2], data[1][2], data[0][3], data[1][3])
-        b = self.calculate_distance(data[1][2], data[2][2], data[1][3], data[2][3])
         if a > b:
-            orient = self.azimuth(dx01, dy01)
+            orient = self.azimuth(x1-x0, y1-y0)
             vertical_cover = trunc((b-(self.tessera_width()/2)) / self.tessera_width()) + 1
             horizontal_cover = trunc((a-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
             points_in_hex_coords = []
@@ -344,24 +338,24 @@ class HexSimply(object):
                     hex_coords_temp = []
                     for i_az in az:
                         if i % 2 == 0:
-                            xpp = round((data[0][2] + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
-                            ypp = round((data[0][3] + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j, 4)
-                            x_prim = xpp - data[0][2]
-                            y_prim = ypp - data[0][3]
+                            xpp = round((x0 + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
+                            ypp = round((y0 + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j, 4)
+                            x_prim = xpp - x0
+                            y_prim = ypp - y0
                             x_bis = x_prim*cos(orient) - y_prim*sin(orient)
                             y_bis = x_prim*sin(orient) + y_prim*cos(orient)
-                            x = x_bis + data[0][2]
-                            y = y_bis + data[0][3]
+                            x = x_bis + x0
+                            y = y_bis + y0
                             hex_coords_temp.append([x, y])
                         else:
-                            xpp = round((data[0][2] + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
-                            ypp = round((data[0][3] + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j - self.tessera_width()/2, 4)
-                            x_prim = xpp - data[0][2]
-                            y_prim = ypp - data[0][3]
+                            xpp = round((x0 + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
+                            ypp = round((y0 + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j - self.tessera_width()/2, 4)
+                            x_prim = xpp - x0
+                            y_prim = ypp - y0
                             x_bis = x_prim*cos(orient) - y_prim*sin(orient)
                             y_bis = x_prim*sin(orient) + y_prim*cos(orient)
-                            x = x_bis + data[0][2]
-                            y = y_bis + data[0][3]
+                            x = x_bis + x0
+                            y = y_bis + y0
                             hex_coords_temp.append([x, y])
                     for point_coords in polyline_coords:
                         # Using Ray Casting Method
@@ -369,7 +363,7 @@ class HexSimply(object):
                             points_in_hex_coords.append([id_hex, point_coords[1], point_coords[2], point_coords[3]])
                     id_hex += 1
         else:
-            orient = self.azimuth(dx12, dy12)
+            orient = self.azimuth(x2-x1, y2-y1)
             vertical_cover = trunc((a-(self.tessera_width()/2)) / self.tessera_width()) + 1
             horizontal_cover = trunc((b-0.5*self.largest_diagonal_half()) / (1.5*self.largest_diagonal_half())) + 2
             points_in_hex_coords = []
@@ -379,24 +373,24 @@ class HexSimply(object):
                     hex_coords_temp = []
                     for i_az in az:
                         if i % 2 == 0:
-                            xpp = round((data[1][2] + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
-                            ypp = round((data[1][3] + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j, 4)
-                            x_prim = xpp - data[1][2]
-                            y_prim = ypp - data[1][3]
+                            xpp = round((x1 + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
+                            ypp = round((y1 + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j, 4)
+                            x_prim = xpp - x1
+                            y_prim = ypp - y1
                             x_bis = x_prim*cos(orient) - y_prim*sin(orient)
                             y_bis = x_prim*sin(orient) + y_prim*cos(orient)
-                            x = x_bis + data[1][2]
-                            y = y_bis + data[1][3]
+                            x = x_bis + x1
+                            y = y_bis + y1
                             hex_coords_temp.append([x, y])
                         else:
-                            xpp = round((data[1][2] + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
-                            ypp = round((data[1][3] + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j - self.tessera_width()/2, 4)
-                            x_prim = xpp - data[1][2]
-                            y_prim = ypp - data[1][3]
+                            xpp = round((x1 + self.largest_diagonal_half()*sin((i_az*pi)/180)) + 1.5*self.largest_diagonal_half()*i, 4)
+                            ypp = round((y1 + self.largest_diagonal_half()*cos((i_az*pi)/180)) - self.tessera_width()*j - self.tessera_width()/2, 4)
+                            x_prim = xpp - x1
+                            y_prim = ypp - y1
                             x_bis = x_prim*cos(orient) - y_prim*sin(orient)
                             y_bis = x_prim*sin(orient) + y_prim*cos(orient)
-                            x = x_bis + data[1][2]
-                            y = y_bis + data[1][3]
+                            x = x_bis + x1
+                            y = y_bis + y1
                             hex_coords_temp.append([x, y])
                     for point_coords in polyline_coords:
                         # Using Ray Casting Method
@@ -412,7 +406,7 @@ class HexSimply(object):
         return
 
     """
-    Direction of tessellation consistent to direction of minimal rectangle area polygon starting from the corner
+    Direction of tessellation consistent to direction of minimal area rectangle polygon starting from the corner
     of the rectangle
     """
     def minimal_rectangle_area(self):
@@ -421,20 +415,37 @@ class HexSimply(object):
         temp_rect_area = "in_memory\\rect_area"
         arcpy.MinimumBoundingGeometry_management(self.original, temp_rect_area, "RECTANGLE_BY_AREA", "ALL")
         data = self.read_geom(temp_rect_area)
-        self.rectangle_general(data, polyline_coords)
+        x0, x1, x2, y0, y1, y2 = data[0][2], data[1][2], data[2][2], data[0][3], data[1][3], data[2][3]
+        a = self.calculate_distance(x0, x1, y0, y1)
+        b = self.calculate_distance(x1, x2, y1, y2)
+        self.oriented_rectangle(a, b, x0, x1, x2, y0, y1, y2, polyline_coords)
         return
 
     """
-    Direction of tessellation consistent to direction of minimal rectangle width polygon starting from the corner
-    of the rectangle
+    Direction of tessellation consistent to direction of minimal width rectangle starting from the corner
+    of the rectangle. It is not a pure method for this algorithm, because it is divided with conditions for
+    minimal area rectangle.
     """
-    def minimal_rectangle_width(self):
+    def minimal_rectangle_area_or_width(self):
         self.set_path()
         polyline_coords = self.read_geom(self.original)
-        temp_rect_area = "in_memory\\rect_area"
-        arcpy.MinimumBoundingGeometry_management(self.original, temp_rect_area, "RECTANGLE_BY_WIDTH", "ALL")
-        data = self.read_geom(temp_rect_area)
-        self.rectangle_general(data, polyline_coords)
+        temp_rect_width = "in_memory\\rect_width"
+        arcpy.MinimumBoundingGeometry_management(self.original, temp_rect_width, "RECTANGLE_BY_WIDTH", "ALL")
+        data = self.read_geom(temp_rect_width)
+        x0, x1, x2, y0, y1, y2 = data[0][2], data[1][2], data[2][2], data[0][3], data[1][3], data[2][3]
+        a = self.calculate_distance(x0, x1, y0, y1)
+        b = self.calculate_distance(x1, x2, y1, y2)
+        first_last_distance = self.calculate_distance(polyline_coords[0][2], polyline_coords[0][3], polyline_coords[-1][2], polyline_coords[-1][3])
+        if a < b:
+            if first_last_distance < a:
+                self.oriented_rectangle(a, b, x0, x1, x2, y0, y1, y2, polyline_coords)
+            else:
+                self.minimal_rectangle_area()
+        else:
+            if first_last_distance < b:
+                self.oriented_rectangle(a, b, x0, x1, x2, y0, y1, y2, polyline_coords)
+            else:
+                self.minimal_rectangle_area()
         return
 
     """
@@ -486,18 +497,20 @@ class HexSimply(object):
         angle = self.azimuth(dx1, dy1) - self.azimuth(dx2, dy2)
         if angle > pi/2:
             xy_for_side[2], xy_for_side[0] = xy_for_side[0], xy_for_side[2]
-        self.rectangle_general(xy_for_side, polyline_coords)
+        x0, x1, x2, y0, y1, y2 = xy_for_side[0][2], xy_for_side[1][2], xy_for_side[2][2], xy_for_side[0][3], xy_for_side[1][3], xy_for_side[2][3]
+        a = self.calculate_distance(x0, x1, y0, y1)
+        b = self.calculate_distance(x1, x2, y1, y2)
+        self.oriented_rectangle(a, b, x0, x1, x2, y0, y1, y2, polyline_coords)
         return
 
     def choose_method(self):
         if self.method == 'FROM BOUNDING BOX':
             self.bounding_box()
-        elif self.method == 'FROM MINIMAL RECTANGLE AREA':
-            self.minimal_rectangle_area()
-        elif self.method == 'FROM MINIMAL RECTANGLE WIDTH':
-            self.minimal_rectangle_width()
+        elif self.method == 'FROM MINIMAL RECTANGLE WIDTH OR MINIMAL RECTANGLE AREA':
+            self.minimal_rectangle_area_or_width()
         elif self.method == 'FROM THE FURTHEST POINT OF POLYLINE':
             self.furthest_point()
+        return
 
 
 if __name__ == '__main__':
