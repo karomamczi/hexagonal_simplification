@@ -1,15 +1,23 @@
-#############################################################################
-# Filename: HexTools.py                                                    #
-# Author: Karolina Mamczarz                                                 #
-# Institution: AGH University of Science and Technology in Cracow, Poland   #
-# Last update: 2017-09-02                                                   #
-# Version: 1.0.0                                                            #
-# Description: #                                                            #
-# Class: HexSimply                                                          #
-# Methods: #                                                                #
-# Parameters: #                                                             #
-# Result: #                                                                 #
-#############################################################################
+#######################################################################
+# Filename: HexTools.py                                               #
+# Author: Karolina Mamczarz                                           #
+# Institution: AGH University of Science and Technology in Cracow,    #
+#               Poland                                                #
+# Faculty: Mining Surveying and Environmental Engineering             #
+# Department: Integrated Geodesy and Cartography                      #
+# Last update: 2017-09-02                                             #
+# Version: 1.0.0                                                      #
+# Description: Tools used by HexSimply script, encloses mathematical  #
+#              functions or algorithms and methods for data management#
+# Class: HexTools                                                     #
+# Methods: read_geom, read_geom_attr_rectangle, ray_casting_method,   #
+#          vertex_clustering, spatial_mean, point_to_line_distance,   #
+#          point_to_line_distance_with_sides,                         #
+#          coefficients_linear_function,                              #
+#          coefficients_general_equation, intersection_vertices,      #
+#          calculate_distance, azimuth, eliminate_self_crossing       #
+# Result: Data passed with lists, variables, dictionaries, boolean    #
+#######################################################################
 
 import arcpy
 from math import sqrt, pi, atan2, fabs
@@ -40,7 +48,8 @@ class HexTools:
                 for part in row[0]:
                     pntnum = 0
                     for pnt in part:
-                        rect_area_poly_coords.append([partnum, pntnum, pnt.X, pnt.Y])
+                        rect_area_poly_coords.append([partnum, pntnum, pnt.X,
+                                                      pnt.Y])
                         pntnum += 1
                     partnum += 1
         return rect_area_poly_coords
@@ -61,7 +70,8 @@ class HexTools:
                 if iter_polyline_coords[3] <= max(p1y, p2y):
                     if iter_polyline_coords[2] <= max(p1x, p2x):
                         if p1y != p2y:
-                            xints = (iter_polyline_coords[3]-p1y) * (p2x-p1x) / (p2y-p1y) + p1x
+                            xints = (iter_polyline_coords[3]-p1y) * (p2x-p1x) \
+                                    / (p2y-p1y) + p1x
                         if p1x == p2x or iter_polyline_coords[2] <= xints:
                             inside = not inside
             p1x, p1y = p2x, p2y
@@ -119,7 +129,8 @@ class HexTools:
         return d, x_point, y_point
 
     @staticmethod
-    def point_to_line_distance_with_sides(initial_x, initial_y, set_of_coords, a, b, c):
+    def point_to_line_distance_with_sides(initial_x, initial_y,
+                                          set_of_coords, a, b, c):
         result = {"d_one_side": 0.0,
                   "x_point_one_side": initial_x,
                   "y_point_one_side": initial_y,
@@ -134,20 +145,28 @@ class HexTools:
             if equation > 0:
                 distance = fabs(equation) / sqrt(a**2 + b**2)
                 if distance > result.get("d_one_side"):
-                    result.update({"d_one_side": distance, "x_point_one_side": point[2], "y_point_one_side": point[3]})
+                    result.update({"d_one_side": distance,
+                                   "x_point_one_side": point[2],
+                                   "y_point_one_side": point[3]})
             elif equation < 0:
                 distance = fabs(equation) / sqrt(a**2 + b**2)
                 if distance > result.get("d_other_side"):
-                    result.update({"d_other_side": distance, "x_point_other_side": point[2], "y_point_other_side": point[3]})
+                    result.update({"d_other_side": distance,
+                                   "x_point_other_side": point[2],
+                                   "y_point_other_side": point[3]})
             elif equation == 0:
                 distance_exception = fabs(equation) / sqrt(a**2 + b**2)
                 x_exception = point[2]
                 y_exception = point[3]
         for k, v in dict(result).items():
             if k == "d_one_side" and v == 0.0:
-                result.update({"d_one_side": distance_exception, "x_point_one_side": x_exception, "y_point_one_side": y_exception})
+                result.update({"d_one_side": distance_exception,
+                               "x_point_one_side": x_exception,
+                               "y_point_one_side": y_exception})
             if k == "d_other_side" and v == 0.0:
-                result.update({"d_other_side": distance_exception, "x_point_other_side": x_exception, "y_point_other_side": y_exception})
+                result.update({"d_other_side": distance_exception,
+                               "x_point_other_side": x_exception,
+                               "y_point_other_side": y_exception})
         return result
 
     @staticmethod
@@ -204,31 +223,58 @@ class HexTools:
         while i_point < points - 3:
             j_point = i_point + 2
             while j_point < points - 1:
-                dx_ab = maybe_tangled_line[i_point + 1][0] - maybe_tangled_line[i_point][0]
-                dx_ac = maybe_tangled_line[j_point][0] - maybe_tangled_line[i_point][0]
-                dx_cd = maybe_tangled_line[j_point + 1][0] - maybe_tangled_line[j_point][0]
-                dy_ab = maybe_tangled_line[i_point + 1][1] - maybe_tangled_line[i_point][1]
-                dy_ac = maybe_tangled_line[j_point][1] - maybe_tangled_line[i_point][1]
-                dy_cd = maybe_tangled_line[j_point + 1][1] - maybe_tangled_line[j_point][1]
-                k = (dx_ac * dy_cd - dx_cd * dy_ac) / (dx_ab * dy_cd - dx_cd * dy_ab)
+                dx_ab = maybe_tangled_line[i_point + 1][0] \
+                        - maybe_tangled_line[i_point][0]
+                dx_ac = maybe_tangled_line[j_point][0] \
+                        - maybe_tangled_line[i_point][0]
+                dx_cd = maybe_tangled_line[j_point + 1][0] \
+                        - maybe_tangled_line[j_point][0]
+                dy_ab = maybe_tangled_line[i_point + 1][1] \
+                        - maybe_tangled_line[i_point][1]
+                dy_ac = maybe_tangled_line[j_point][1] \
+                        - maybe_tangled_line[i_point][1]
+                dy_cd = maybe_tangled_line[j_point + 1][1] \
+                        - maybe_tangled_line[j_point][1]
+                k = (dx_ac * dy_cd - dx_cd * dy_ac) \
+                    / (dx_ab * dy_cd - dx_cd * dy_ab)
                 xp = maybe_tangled_line[i_point][0] + k*dx_ab
                 yp = maybe_tangled_line[i_point][1] + k*dy_ab
-                if maybe_tangled_line[i_point + 1][0] - maybe_tangled_line[i_point][0] > 0:
-                    xp_range_first_seg = maybe_tangled_line[i_point][0] < xp < maybe_tangled_line[i_point + 1][0]
+                if maybe_tangled_line[i_point + 1][0] \
+                        - maybe_tangled_line[i_point][0] > 0:
+                    xp_range_first_seg = maybe_tangled_line[i_point][0] \
+                                         < xp \
+                                         < maybe_tangled_line[i_point + 1][0]
                 else:
-                    xp_range_first_seg = maybe_tangled_line[i_point][0] > xp > maybe_tangled_line[i_point + 1][0]
-                if maybe_tangled_line[j_point + 1][0] - maybe_tangled_line[j_point][0] > 0:
-                    xp_range_second_seg = maybe_tangled_line[j_point][0] < xp < maybe_tangled_line[j_point + 1][0]
+                    xp_range_first_seg = maybe_tangled_line[i_point][0] \
+                                         > xp \
+                                         > maybe_tangled_line[i_point + 1][0]
+                if maybe_tangled_line[j_point + 1][0] \
+                        - maybe_tangled_line[j_point][0] > 0:
+                    xp_range_second_seg = maybe_tangled_line[j_point][0] \
+                                          < xp \
+                                          < maybe_tangled_line[j_point + 1][0]
                 else:
-                    xp_range_second_seg = maybe_tangled_line[j_point][0] > xp > maybe_tangled_line[j_point + 1][0]
-                if maybe_tangled_line[i_point + 1][1] - maybe_tangled_line[i_point][1] > 0:
-                    yp_range_first_seg = maybe_tangled_line[i_point][1] < yp < maybe_tangled_line[i_point + 1][1]
+                    xp_range_second_seg = maybe_tangled_line[j_point][0] \
+                                          > xp \
+                                          > maybe_tangled_line[j_point + 1][0]
+                if maybe_tangled_line[i_point + 1][1] \
+                        - maybe_tangled_line[i_point][1] > 0:
+                    yp_range_first_seg = maybe_tangled_line[i_point][1] \
+                                         < yp \
+                                         < maybe_tangled_line[i_point + 1][1]
                 else:
-                    yp_range_first_seg = maybe_tangled_line[i_point][1] > yp > maybe_tangled_line[i_point + 1][1]
-                if maybe_tangled_line[j_point + 1][1] - maybe_tangled_line[j_point][1] > 0:
-                    yp_range_second_seg = maybe_tangled_line[j_point][1] < yp < maybe_tangled_line[j_point + 1][1]
+                    yp_range_first_seg = maybe_tangled_line[i_point][1] \
+                                         > yp \
+                                         > maybe_tangled_line[i_point + 1][1]
+                if maybe_tangled_line[j_point + 1][1] \
+                        - maybe_tangled_line[j_point][1] > 0:
+                    yp_range_second_seg = maybe_tangled_line[j_point][1] \
+                                          < yp \
+                                          < maybe_tangled_line[j_point + 1][1]
                 else:
-                    yp_range_second_seg = maybe_tangled_line[j_point][1] > yp > maybe_tangled_line[j_point + 1][1]
+                    yp_range_second_seg = maybe_tangled_line[j_point][1] \
+                                          > yp \
+                                          > maybe_tangled_line[j_point + 1][1]
                 xp_in_range = xp_range_first_seg and xp_range_second_seg
                 yp_in_range = yp_range_first_seg and yp_range_second_seg
                 if xp_in_range and yp_in_range:
@@ -236,5 +282,8 @@ class HexTools:
                 j_point += 1
             i_point += 1
         for reverse_pair in points_to_revert:
-            maybe_tangled_line[reverse_pair[0]], maybe_tangled_line[reverse_pair[1]] = maybe_tangled_line[reverse_pair[1]], maybe_tangled_line[reverse_pair[0]]
+            maybe_tangled_line[reverse_pair[0]], \
+            maybe_tangled_line[reverse_pair[1]] \
+                = maybe_tangled_line[reverse_pair[1]], \
+                  maybe_tangled_line[reverse_pair[0]]
         return maybe_tangled_line
