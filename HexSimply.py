@@ -280,8 +280,9 @@ class HexSimply(object):
         a = HexTools.calculate_distance(x0, x1, y0, y1)
         b = HexTools.calculate_distance(x1, x2, y1, y2)
         first_last_distance = HexTools.calculate_distance(
-            polyline_coords[0][2], polyline_coords[0][3],
-            polyline_coords[-1][2], polyline_coords[-1][3])
+            polyline_coords[0][2], polyline_coords[-1][2],
+            polyline_coords[0][3], polyline_coords[-1][3])
+        arcpy.AddMessage(str(first_last_distance)+"\n")
         if a < b:
             if first_last_distance < a:
                 self.oriented_rectangle(a, b, x0, x1, x2, y0, y1, y2,
