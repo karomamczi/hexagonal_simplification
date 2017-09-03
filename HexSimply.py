@@ -133,14 +133,15 @@ class HexSimply(object):
         az = [30, 90, 150, 210, 270, 330]
         if a > b:
             orient = HexTools.azimuth(x1-x0, y1-y0)
-            vertical_cover = trunc((b-(self.tessera_width()/2))
+            oriented_vertical_cover = trunc((b-(self.tessera_width()/2))
                                    / self.tessera_width()) + 1
-            horizontal_cover = trunc((a-0.5*self.largest_diagonal_half())
-                                     / (1.5*self.largest_diagonal_half())) + 2
+            oriented_horizontal_cover = \
+                trunc((a-0.5*self.largest_diagonal_half())
+                      / (1.5*self.largest_diagonal_half())) + 2
             points_in_hex_coords = []
             id_hex = 0
-            for i in range(horizontal_cover + 1):
-                for j in range(vertical_cover + 1):
+            for i in range(oriented_horizontal_cover + 1):
+                for j in range(oriented_vertical_cover + 1):
                     hex_coords_temp = []
                     for i_az in az:
                         if i % 2 == 0:
@@ -185,14 +186,15 @@ class HexSimply(object):
                     id_hex += 1
         else:
             orient = HexTools.azimuth(x2-x1, y2-y1)
-            vertical_cover = trunc((a-(self.tessera_width()/2))
+            oriented_vertical_cover = trunc((a-(self.tessera_width()/2))
                                    / self.tessera_width()) + 1
-            horizontal_cover = trunc((b-0.5*self.largest_diagonal_half())
-                                     / (1.5*self.largest_diagonal_half())) + 2
+            oriented_horizontal_cover = \
+                trunc((b-0.5*self.largest_diagonal_half())
+                      / (1.5*self.largest_diagonal_half())) + 2
             points_in_hex_coords = []
             id_hex = 0
-            for i in range(horizontal_cover + 1):
-                for j in range(vertical_cover + 1):
+            for i in range(oriented_horizontal_cover + 1):
+                for j in range(oriented_vertical_cover + 1):
                     hex_coords_temp = []
                     for i_az in az:
                         if i % 2 == 0:
@@ -282,7 +284,6 @@ class HexSimply(object):
         first_last_distance = HexTools.calculate_distance(
             polyline_coords[0][2], polyline_coords[-1][2],
             polyline_coords[0][3], polyline_coords[-1][3])
-        arcpy.AddMessage(str(first_last_distance)+"\n")
         if a < b:
             if first_last_distance < a:
                 self.oriented_rectangle(a, b, x0, x1, x2, y0, y1, y2,
