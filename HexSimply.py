@@ -128,115 +128,60 @@ class HexSimply(object):
         self.create_new_feature(HexTools.eliminate_self_crossing(mean_xy))
         return
 
-    def oriented_rectangle(self, a, b, x0, x1, x2, y0, y1, y2,
-                           polyline_coords):
+    def oriented_rectangle(self, a, b, x0, x1, y0, y1,polyline_coords):
         az = [30, 90, 150, 210, 270, 330]
-        if a > b:
-            orient = HexTools.azimuth(x1-x0, y1-y0)
-            oriented_vertical_cover = trunc((b-(self.tessera_width()/2))
-                                   / self.tessera_width()) + 1
-            oriented_horizontal_cover = \
-                trunc((a-0.5*self.largest_diagonal_half())
-                      / (1.5*self.largest_diagonal_half())) + 2
-            points_in_hex_coords = []
-            id_hex = 0
-            for i in range(oriented_horizontal_cover + 1):
-                for j in range(oriented_vertical_cover + 1):
-                    hex_coords_temp = []
-                    for i_az in az:
-                        if i % 2 == 0:
-                            xpp = round((x0 + self.largest_diagonal_half()
-                                        * sin((i_az*pi)/180))
-                                        + 1.5*self.largest_diagonal_half()*i,
-                                        4)
-                            ypp = round((y0 + self.largest_diagonal_half()
-                                        * cos((i_az*pi)/180))
-                                        - self.tessera_width()*j, 4)
-                            x_prim = xpp - x0
-                            y_prim = ypp - y0
-                            x_bis = x_prim*cos(orient) - y_prim*sin(orient)
-                            y_bis = x_prim*sin(orient) + y_prim*cos(orient)
-                            x = x_bis + x0
-                            y = y_bis + y0
-                            hex_coords_temp.append([x, y])
-                        else:
-                            xpp = round((x0 + self.largest_diagonal_half()
-                                        * sin((i_az*pi)/180))
-                                        + 1.5*self.largest_diagonal_half()*i,
-                                        4)
-                            ypp = round((y0 + self.largest_diagonal_half()
-                                        * cos((i_az*pi)/180))
-                                        - self.tessera_width()*j
-                                        - self.tessera_width()/2, 4)
-                            x_prim = xpp - x0
-                            y_prim = ypp - y0
-                            x_bis = x_prim*cos(orient) - y_prim*sin(orient)
-                            y_bis = x_prim*sin(orient) + y_prim*cos(orient)
-                            x = x_bis + x0
-                            y = y_bis + y0
-                            hex_coords_temp.append([x, y])
-                    for point_coords in polyline_coords:
-                        # Using Ray Casting Method
-                        if HexTools.ray_casting_method(hex_coords_temp,
-                                                       point_coords) is True:
-                            points_in_hex_coords.append([id_hex,
-                                                         point_coords[1],
-                                                         point_coords[2],
-                                                         point_coords[3]])
-                    id_hex += 1
-        else:
-            orient = HexTools.azimuth(x2-x1, y2-y1)
-            oriented_vertical_cover = trunc((a-(self.tessera_width()/2))
-                                   / self.tessera_width()) + 1
-            oriented_horizontal_cover = \
-                trunc((b-0.5*self.largest_diagonal_half())
-                      / (1.5*self.largest_diagonal_half())) + 2
-            points_in_hex_coords = []
-            id_hex = 0
-            for i in range(oriented_horizontal_cover + 1):
-                for j in range(oriented_vertical_cover + 1):
-                    hex_coords_temp = []
-                    for i_az in az:
-                        if i % 2 == 0:
-                            xpp = round((x1 + self.largest_diagonal_half()
-                                        * sin((i_az*pi)/180))
-                                        + 1.5*self.largest_diagonal_half()*i,
-                                        4)
-                            ypp = round((y1 + self.largest_diagonal_half()
-                                        * cos((i_az*pi)/180))
-                                        - self.tessera_width()*j, 4)
-                            x_prim = xpp - x1
-                            y_prim = ypp - y1
-                            x_bis = x_prim*cos(orient) - y_prim*sin(orient)
-                            y_bis = x_prim*sin(orient) + y_prim*cos(orient)
-                            x = x_bis + x1
-                            y = y_bis + y1
-                            hex_coords_temp.append([x, y])
-                        else:
-                            xpp = round((x1 + self.largest_diagonal_half()
-                                        * sin((i_az*pi)/180))
-                                        + 1.5*self.largest_diagonal_half()*i,
-                                        4)
-                            ypp = round((y1 + self.largest_diagonal_half()
-                                        * cos((i_az*pi)/180))
-                                        - self.tessera_width()*j
-                                        - self.tessera_width()/2, 4)
-                            x_prim = xpp - x1
-                            y_prim = ypp - y1
-                            x_bis = x_prim*cos(orient) - y_prim*sin(orient)
-                            y_bis = x_prim*sin(orient) + y_prim*cos(orient)
-                            x = x_bis + x1
-                            y = y_bis + y1
-                            hex_coords_temp.append([x, y])
-                    for point_coords in polyline_coords:
-                        # Using Ray Casting Method
-                        if HexTools.ray_casting_method(hex_coords_temp,
-                                                       point_coords) is True:
-                            points_in_hex_coords.append([id_hex,
-                                                         point_coords[1],
-                                                         point_coords[2],
-                                                         point_coords[3]])
-                    id_hex += 1
+        orient = HexTools.azimuth(x1-x0, y1-y0)
+        oriented_vertical_cover = trunc((b-(self.tessera_width()/2))
+                               / self.tessera_width()) + 1
+        oriented_horizontal_cover = \
+            trunc((a-0.5*self.largest_diagonal_half())
+                  / (1.5*self.largest_diagonal_half())) + 2
+        points_in_hex_coords = []
+        id_hex = 0
+        for i in range(oriented_horizontal_cover + 1):
+            for j in range(oriented_vertical_cover + 1):
+                hex_coords_temp = []
+                for i_az in az:
+                    if i % 2 == 0:
+                        xpp = round((x0 + self.largest_diagonal_half()
+                                    * sin((i_az*pi)/180))
+                                    + 1.5*self.largest_diagonal_half()*i,
+                                    4)
+                        ypp = round((y0 + self.largest_diagonal_half()
+                                    * cos((i_az*pi)/180))
+                                    - self.tessera_width()*j, 4)
+                        x_prim = xpp - x0
+                        y_prim = ypp - y0
+                        x_bis = x_prim*cos(orient) - y_prim*sin(orient)
+                        y_bis = x_prim*sin(orient) + y_prim*cos(orient)
+                        x = x_bis + x0
+                        y = y_bis + y0
+                        hex_coords_temp.append([x, y])
+                    else:
+                        xpp = round((x0 + self.largest_diagonal_half()
+                                    * sin((i_az*pi)/180))
+                                    + 1.5*self.largest_diagonal_half()*i,
+                                    4)
+                        ypp = round((y0 + self.largest_diagonal_half()
+                                    * cos((i_az*pi)/180))
+                                    - self.tessera_width()*j
+                                    - self.tessera_width()/2, 4)
+                        x_prim = xpp - x0
+                        y_prim = ypp - y0
+                        x_bis = x_prim*cos(orient) - y_prim*sin(orient)
+                        y_bis = x_prim*sin(orient) + y_prim*cos(orient)
+                        x = x_bis + x0
+                        y = y_bis + y0
+                        hex_coords_temp.append([x, y])
+                for point_coords in polyline_coords:
+                    # Using Ray Casting Method
+                    if HexTools.ray_casting_method(hex_coords_temp,
+                                                   point_coords) is True:
+                        points_in_hex_coords.append([id_hex,
+                                                     point_coords[1],
+                                                     point_coords[2],
+                                                     point_coords[3]])
+                id_hex += 1
         # Using Vertex Clustering
         cluster = HexTools.vertex_clustering(points_in_hex_coords)
         # Using Spatial Mean
@@ -260,7 +205,7 @@ class HexSimply(object):
                                  data[0][3], data[1][3], data[2][3]
         a = HexTools.calculate_distance(x0, x1, y0, y1)
         b = HexTools.calculate_distance(x1, x2, y1, y2)
-        self.oriented_rectangle(a, b, x0, x1, x2, y0, y1, y2, polyline_coords)
+        self.oriented_rectangle(a, b, x0, x1, y0, y1, polyline_coords)
         return
 
     """
@@ -286,14 +231,12 @@ class HexSimply(object):
             polyline_coords[0][3], polyline_coords[-1][3])
         if a < b:
             if first_last_distance < a:
-                self.oriented_rectangle(a, b, x0, x1, x2, y0, y1, y2,
-                                        polyline_coords)
+                self.oriented_rectangle(a, b, x0, x1, y0, y1, polyline_coords)
             else:
                 self.minimal_rectangle_area()
         else:
             if first_last_distance < b:
-                self.oriented_rectangle(a, b, x0, x1, x2, y0, y1, y2,
-                                        polyline_coords)
+                self.oriented_rectangle(a, b, x0, x1, y0, y1, polyline_coords)
             else:
                 self.minimal_rectangle_area()
         return
@@ -375,7 +318,7 @@ class HexSimply(object):
                                  xy_for_side[1][3], xy_for_side[2][3]
         a = HexTools.calculate_distance(x0, x1, y0, y1)
         b = HexTools.calculate_distance(x1, x2, y1, y2)
-        self.oriented_rectangle(a, b, x0, x1, x2, y0, y1, y2, polyline_coords)
+        self.oriented_rectangle(a, b, x0, x1, y0, y1, polyline_coords)
         return
 
     def choose_method(self):
