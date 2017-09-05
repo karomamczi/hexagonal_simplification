@@ -5,7 +5,7 @@
 #               Poland                                                #
 # Faculty: Mining Surveying and Environmental Engineering             #
 # Department: Integrated Geodesy and Cartography                      #
-# Last update: 2017-09-02                                             #
+# Last update: 2017-09-05                                             #
 # Version: 1.0.0                                                      #
 # Description: Tools used by HexSimply script, encloses mathematical  #
 #              functions or algorithms and methods for data management#

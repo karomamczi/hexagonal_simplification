@@ -5,7 +5,7 @@
 #               Poland                                                #
 # Faculty: Mining Surveying and Environmental Engineering             #
 # Department: Integrated Geodesy and Cartography                      #
-# Last update: 2017-09-02                                             #
+# Last update: 2017-09-05                                             #
 # Version: 1.0.0                                                      #
 # Description: Implementation of line simplification methods based on #
 #              hexagonal tessellation generated on bounding box and   #
@@ -66,8 +66,8 @@ class HexSimply(object):
         return
 
     """
-    Direction of tessellation consistent horizontally to minimal area
-    bounding box starting from upper-left corner of this bounding box.
+    Direction of tessellation consistent horizontally to bounding box
+    starting from upper-left corner of this bounding box.
     """
     def bounding_box(self):
         self.set_path()
@@ -192,7 +192,7 @@ class HexSimply(object):
 
     """
     Direction of tessellation consistent to direction of minimal area
-    rectangle polygon starting from the corner of the rectangle
+    rectangle starting from the corner of the rectangle
     """
     def minimal_rectangle_area(self):
         self.set_path()
@@ -242,10 +242,10 @@ class HexSimply(object):
         return
 
     """
-    Direction of tessellation consistent with the directions of two
+    Direction of tessellation consistent to the directions of two
     bisectors of vertically opposite angles, which vertex is
-    simultaneously a furthest point of the original polyline to the
-    line which joins first and last point. Angles are created with
+    simultaneously the furthest point of the original polyline to the
+    line, which joins first and last point. Angles are created with
     lines:
         - first point - furthest vertex,
         - furthest vertex - last point.
@@ -325,7 +325,7 @@ class HexSimply(object):
         if self.method == 'FROM BOUNDING BOX':
             self.bounding_box()
         elif self.method == \
-                'FROM MINIMAL RECTANGLE WIDTH OR MINIMAL RECTANGLE AREA':
+                'FROM MINIMAL WIDTH RECTANGLE OR MINIMAL AREA RECTANGLE':
             self.minimal_rectangle_area_or_width()
         elif self.method == 'FROM THE FURTHEST POINT OF POLYLINE':
             self.furthest_point()
