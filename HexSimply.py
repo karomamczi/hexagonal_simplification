@@ -39,6 +39,15 @@ class HexSimply(object):
         self.method = method
         self.choose_method()
 
+    """
+    General formula proposed by Paulo Raposo, author of the line
+    simplification algorithm based on vertex clustering on a hexagonal
+    tesselation.
+    Article: Raposo, P. (2013). Scale-specific automated
+    line simplification by vertex clustering on a hexagonal
+    tessellation. Cartography and Geographic Information Science,
+    427-443.
+    """
     def tessera_width(self):
         return 5*self.l*self.s
 
