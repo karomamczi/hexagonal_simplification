@@ -17,6 +17,7 @@
 
 from sys import exit
 import arcpy
+from math import sqrt
 
 
 class HexStatistics(object):
@@ -33,6 +34,7 @@ class HexStatistics(object):
         temp_merge = "in_memory\\merge"
         arcpy.Merge_management([self.original, self.simplified], temp_merge)
         temp_grid = "in_memory\\grid"
+        #temp_grid = r"C:\Student\grid.shp"
         arcpy.GridIndexFeatures_cartography(
             temp_grid, temp_merge, "INTERSECTFEATURE", "NO_USEPAGEUNIT", "#",
             "1 Kilometers", "1 Kilometers")
@@ -58,6 +60,10 @@ class HexStatistics(object):
                         simplified_pntnum += 1
         self.report.write("Number of points after simplification: {0}\n"
                           .format(simplified_pntnum))
+        percentage = (float(simplified_pntnum) / float(original_pntnum))*100
+        self.report.write("Percentage change in number of coordinates: "
+                          + "{:0.2f}%\n"
+                          .format(percentage))
         arcpy.AddMessage("Point count statistics - done.")
         return
 
@@ -67,10 +73,71 @@ class HexStatistics(object):
         with arcpy.da.SearchCursor(self.grid, ["PageNumber"]) as cursor:
             count_cells = 1
             for row in cursor:
-                count_cells +=1
+                count_cells += 1
         self.report.write("Number of cells in grid: {0}\n"
                           .format(count_cells))
-
+        temp_points_original = "in_memory\\points_original"
+        temp_points_simplified = "in_memory\\points_simplified"
+        arcpy.FeatureVerticesToPoints_management(self.original,
+                                                 temp_points_original)
+        arcpy.FeatureVerticesToPoints_management(self.simplified,
+                                                 temp_points_simplified)
+        temp_intersect_original = "in_memory\\intersect_original"
+        temp_intersect_simplified = "in_memory\\intersect_simplified"
+        arcpy.Intersect_analysis([temp_points_original, self.grid],
+                                 temp_intersect_original, "ALL", "#", "POINT")
+        arcpy.Intersect_analysis([temp_points_simplified, self.grid],
+                                 temp_intersect_simplified, "ALL", "#",
+                                 "POINT")
+        arcpy.Delete_management(temp_points_original)
+        arcpy.Delete_management(temp_points_simplified)
+        temp_stats_original = "in_memory\\stats_original"
+        temp_stats_simplified = "in_memory\\stats_simplified"
+        arcpy.Statistics_analysis(temp_intersect_original, temp_stats_original,
+                                  "Id SUM", "PageNumber")
+        arcpy.Statistics_analysis(temp_intersect_simplified,
+                                  temp_stats_simplified,
+                                  "Id SUM", "PageNumber")
+        arcpy.Delete_management(temp_intersect_original)
+        arcpy.Delete_management(temp_intersect_simplified)
+        with arcpy.da.SearchCursor(temp_stats_original,
+                                   ["FREQUENCY"]) as cursor:
+            points_original_in_cells = []
+            for row_fr1 in cursor:
+                points_original_in_cells.append(row_fr1[0])
+        mean_original = sum(points_original_in_cells) \
+                        / len(points_original_in_cells)
+        points_original_in_cells[:] = [(x - mean_original)**2
+                                       for x in points_original_in_cells]
+        std_original = sqrt(float(sum(points_original_in_cells)) \
+                       / float(len(points_original_in_cells) - 1))
+        self.report.write("Number of cells in grid intersected by original "
+                          + "points: {0}\n"
+                          .format(len(points_original_in_cells)))
+        self.report.write("Standard deviation of original points: {:0.2f}\n"
+                          .format(std_original))
+        with arcpy.da.SearchCursor(temp_stats_simplified,
+                                   ["FREQUENCY"]) as cursor:
+            points_simplified_in_cells = []
+            for row_fr2 in cursor:
+                points_simplified_in_cells.append(row_fr2[0])
+        mean_simplified = sum(points_simplified_in_cells) \
+                        / len(points_simplified_in_cells)
+        points_simplified_in_cells[:] = [(x - mean_simplified)**2
+                                       for x in points_simplified_in_cells]
+        std_simplified = sqrt(float(sum(points_simplified_in_cells)) \
+                       / float(len(points_simplified_in_cells) - 1))
+        self.report.write("Number of cells in grid intersected by simplified "
+                          + "points: {0}\n"
+                          .format(len(points_simplified_in_cells)))
+        self.report.write("Standard deviation of simplified points: {:0.2f}\n"
+                          .format(std_simplified))
+        percentage = (std_simplified / std_original)*100
+        self.report.write("Percentage change in the standard deviation of the "
+                          + "number of coordinates: {:0.2f}%\n"
+                          .format(percentage))
+        arcpy.Delete_management(temp_stats_original)
+        arcpy.Delete_management(temp_stats_simplified)
         arcpy.AddMessage("Point count per area statistics - done.")
         return
 
