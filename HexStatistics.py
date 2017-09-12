@@ -5,12 +5,14 @@
 #               Poland                                                #
 # Faculty: Mining Surveying and Environmental Engineering             #
 # Department: Integrated Geodesy and Cartography                      #
-# Last update: 2017-09-11                                             #
+# Last update: 2017-09-12                                             #
 # Version: 1.0.0                                                      #
-# Description:                         #
+# Description: Statistics used to test quality of line simplification #
 # Class: HexStatistics                                                #
-# Methods:                            #
-# Result:                                      #
+# Methods:  __init__, comparison_grid_1_sqkm, point_count,            #
+#           std_point_per_area, surface_in_between,                   #
+#           surface_in_between_per_area, hausdorff_distance           #
+# Result: Report in a text file                                       #
 #######################################################################
 
 from sys import exit
@@ -24,13 +26,9 @@ class HexStatistics(object):
         self.simplified = simplified
         self.report_file_path = report_file_path
         self.report = open(self.report_file_path + '.txt', 'w')
-        self.report.write("---------Simplification statistics---------\n\n")
-
-        # Methods run on init
         self.grid = self.comparison_grid_1_sqkm()
-        self.point_count()
-        #self.point_per_square_1_km()
-        #self.surface_in_between()
+        self.calculate_statistics()
+
 
     def comparison_grid_1_sqkm(self):
         temp_merge = "in_memory\\merge"
@@ -40,6 +38,7 @@ class HexStatistics(object):
             temp_grid, temp_merge, "INTERSECTFEATURE", "NO_USEPAGEUNIT", "#",
             "1 Kilometers", "1 Kilometers")
         arcpy.Delete_management(temp_merge)
+        arcpy.AddMessage("Comparison grid (1 sq km) prepared.")
         return temp_grid
 
     def point_count(self):
@@ -60,9 +59,11 @@ class HexStatistics(object):
                         simplified_pntnum += 1
         self.report.write("Points after simplification: {0}\n"
                           .format(simplified_pntnum))
+        arcpy.AddMessage("Point count statistics - done.")
         return
 
-    def point_per_square_1_km(self):
+    def std_point_per_area(self):
+        arcpy.AddMessage("Point count per area statistics - done.")
         return
 
     def surface_in_between(self):
@@ -85,9 +86,30 @@ class HexStatistics(object):
         self.report.write("\n---Surface in between---\n")
         self.report.write("Sum area: {0}\n".format(sum))
         self.report.write("Mean area: {0}\n".format(mean))
+        arcpy.AddMessage("Differential surface statistics - done.")
+        return
+
+    def surface_in_between_per_area(self):
+        arcpy.AddMessage("Differential surface per area statistics - done.")
+        return
+
+    def hausdorff_distance(self):
+        arcpy.AddMessage("Hausdorff distance statistics - done.")
+        return
+
+    def calculate_statistics(self):
+        self.report.write("---------Simplification statistics---------\n\n")
+        arcpy.AddMessage("Started calculating statistics...")
+        self.point_count()
+        self.std_point_per_area()
+        self.surface_in_between()
+        self.surface_in_between_per_area()
+        self.hausdorff_distance()
+
+
 
 if __name__ == '__main__':
-    calculate_statistics = HexStatistics(arcpy.GetParameterAsText(0),
-                                         arcpy.GetParameterAsText(1),
-                                         arcpy.GetParameterAsText(2))
-    exit(calculate_statistics)
+    calculating_statistics = HexStatistics(arcpy.GetParameterAsText(0),
+                                           arcpy.GetParameterAsText(1),
+                                           arcpy.GetParameterAsText(2))
+    exit(calculating_statistics)
