@@ -29,7 +29,6 @@ class HexStatistics(object):
         self.grid = self.comparison_grid_1_sqkm()
         self.calculate_statistics()
 
-
     def comparison_grid_1_sqkm(self):
         temp_merge = "in_memory\\merge"
         arcpy.Merge_management([self.original, self.simplified], temp_merge)
@@ -49,7 +48,7 @@ class HexStatistics(object):
                 for part in row[0]:
                     for pnt in part:
                         original_pntnum += 1
-        self.report.write("Points before simplification: {0}\n"
+        self.report.write("Number of points before simplification: {0}\n"
                           .format(original_pntnum))
         with arcpy.da.SearchCursor(self.simplified, ["SHAPE@"]) as cursor:
             simplified_pntnum = 0
@@ -57,12 +56,21 @@ class HexStatistics(object):
                 for part in row[0]:
                     for pnt in part:
                         simplified_pntnum += 1
-        self.report.write("Points after simplification: {0}\n"
+        self.report.write("Number of points after simplification: {0}\n"
                           .format(simplified_pntnum))
         arcpy.AddMessage("Point count statistics - done.")
         return
 
     def std_point_per_area(self):
+        self.report.write("\n---Standard deviation of point count per "
+                          + "area---\n")
+        with arcpy.da.SearchCursor(self.grid, ["PageNumber"]) as cursor:
+            count_cells = 1
+            for row in cursor:
+                count_cells +=1
+        self.report.write("Number of cells in grid: {0}\n"
+                          .format(count_cells))
+
         arcpy.AddMessage("Point count per area statistics - done.")
         return
 
@@ -73,19 +81,18 @@ class HexStatistics(object):
         arcpy.FeatureToPolygon_management(temp_merge, temp_poly)
         arcpy.Delete_management(temp_merge)
         arcpy.AddGeometryAttributes_management(temp_poly, "AREA", "#",
-                                               "METERS")
+                                               "SQUARE_METERS")
         with arcpy.da.SearchCursor(temp_poly, ["POLY_AREA"]) as cursor:
-            sum = 0
+            summarize = 1
+            parts = 1
             for row in cursor:
-                parts = 1
-                for part in row[0]:
-                    sum += part
-                    parts += 1
-        mean = sum / parts
+                summarize += row[0]
+                parts += 1
+        mean = summarize / parts
         arcpy.Delete_management(temp_poly)
-        self.report.write("\n---Surface in between---\n")
-        self.report.write("Sum area: {0}\n".format(sum))
-        self.report.write("Mean area: {0}\n".format(mean))
+        self.report.write("\n---Differential surface---\n")
+        self.report.write("Sum area [square m]: {0}\n".format(summarize))
+        self.report.write("Mean area [square m]: {0}\n".format(mean))
         arcpy.AddMessage("Differential surface statistics - done.")
         return
 
@@ -98,13 +105,14 @@ class HexStatistics(object):
         return
 
     def calculate_statistics(self):
-        self.report.write("---------Simplification statistics---------\n\n")
+        self.report.write("---------Simplification statistics---------\n")
         arcpy.AddMessage("Started calculating statistics...")
         self.point_count()
         self.std_point_per_area()
         self.surface_in_between()
         self.surface_in_between_per_area()
         self.hausdorff_distance()
+        self.report.close()
 
 
 
