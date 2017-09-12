@@ -42,8 +42,8 @@ class HexStatistics(object):
         arcpy.AddMessage("Comparison grid (1 sq km) prepared.")
         return temp_grid
 
-    def point_count(self):
-        self.report.write("\n---Point count---\n")
+    def point_count(self):           # Dodac obliczenie na długosc linii
+        self.report.write("\n---Point count per length---\n")
         with arcpy.da.SearchCursor(self.original, ["SHAPE@"]) as cursor:
             original_pntnum = 0
             for row in cursor:
@@ -67,9 +67,9 @@ class HexStatistics(object):
         arcpy.AddMessage("Point count statistics - done.")
         return
 
-    def std_point_per_area(self):
+    def std_point_per_area(self):           # Dodac obliczenie na długosc linii
         self.report.write("\n---Standard deviation of point count per "
-                          + "area---\n")
+                          + "length and area---\n")
         with arcpy.da.SearchCursor(self.grid, ["PageNumber"]) as cursor:
             count_cells = 1
             for row in cursor:
@@ -114,7 +114,7 @@ class HexStatistics(object):
         self.report.write("Number of cells in grid intersected by original "
                           + "points: {0}\n"
                           .format(len(points_original_in_cells)))
-        self.report.write("Standard deviation of original points: {:0.2f}\n"
+        self.report.write("Standard deviation of original points: {:0.2f} m\n"
                           .format(std_original))
         with arcpy.da.SearchCursor(temp_stats_simplified,
                                    ["FREQUENCY"]) as cursor:
@@ -130,8 +130,8 @@ class HexStatistics(object):
         self.report.write("Number of cells in grid intersected by simplified "
                           + "points: {0}\n"
                           .format(len(points_simplified_in_cells)))
-        self.report.write("Standard deviation of simplified points: {:0.2f}\n"
-                          .format(std_simplified))
+        self.report.write("Standard deviation of simplified points: "
+                          + "{:0.2f} m\n".format(std_simplified))
         percentage = (std_simplified / std_original)*100
         self.report.write("Percentage change in the standard deviation of the "
                           + "number of coordinates: {:0.2f}%\n"
@@ -158,12 +158,55 @@ class HexStatistics(object):
         mean = summarize / parts
         arcpy.Delete_management(temp_poly)
         self.report.write("\n---Differential surface---\n")
-        self.report.write("Sum area [square m]: {0}\n".format(summarize))
-        self.report.write("Mean area [square m]: {0}\n".format(mean))
+        self.report.write("Sum area: {0} sq m\n".format(summarize))
+        self.report.write("Mean area: {0} sq m\n".format(mean))
         arcpy.AddMessage("Differential surface statistics - done.")
         return
 
-    def surface_in_between_per_area(self):
+    def surface_in_between_per_area(self):   # Dodac obliczenie na długosc linii i powierzchni
+        temp_merge = "in_memory\\merge"
+        arcpy.Merge_management([self.original, self.simplified], temp_merge)
+        temp_poly = "in_memory\\poly"
+        arcpy.FeatureToPolygon_management(temp_merge, temp_poly)
+        arcpy.Delete_management(temp_merge)
+        temp_intersect_poly = "in_memory\\intersect_poly"
+        arcpy.Intersect_analysis([temp_poly, self.grid],
+                                 temp_intersect_poly, "ALL", "#", "INPUT")
+        arcpy.AddGeometryAttributes_management(temp_intersect_poly, "AREA",
+                                               "#", "SQUARE_METERS")
+        temp_stats_poly = "in_memory\\stats_simplified"
+        arcpy.Statistics_analysis(temp_intersect_poly, temp_stats_poly,
+                                  "POLY_AREA SUM", "PageNumber")
+
+        temp_poly_points = "in_memory\\poly_points"
+        arcpy.FeatureToPoint_management(temp_intersect_poly, temp_poly_points,
+                                        "INSIDE")
+        with arcpy.da.SearchCursor(temp_poly_points, ["SHAPE@", "POLY_AREA",
+                                                      "PageNumber"]) as cursor:
+            poly_points_array = []
+            poly_point_attr_array = []
+            for point in cursor:
+                poly_points_array.append(point[0])
+                poly_point_attr_array.append([point[1], point[2]])
+        with arcpy.da.SearchCursor(self.simplified, ["SHAPE@"]) as cursor:
+            side_array = []
+            for polyline in cursor:
+                for i_p in poly_points_array:
+                    line = polyline[0]
+                    check_point = line.queryPointAndDistance(i_p)
+                    side_array.append(check_point[3])
+        sum_right = 0
+        sum_left = 0
+        for elem in side_array:
+            if elem is True:
+                sum_right += poly_point_attr_array[elem][0]
+            else:
+                sum_left += poly_point_attr_array[elem][0]
+        self.report.write("\n---Differential surface per length and area---\n")
+        self.report.write("Sum of positive areal displacement: {0} sq m\n"
+                          .format(sum_right))
+        self.report.write("Sum of negative areal displacement: {0} sq m\n"
+                          .format(sum_left))
         arcpy.AddMessage("Differential surface per area statistics - done.")
         return
 
