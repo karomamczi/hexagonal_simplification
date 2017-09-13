@@ -9,10 +9,10 @@
 # Version: 1.0.0                                                      #
 # Description: Statistics used to test quality of line simplification #
 # Class: HexStatistics                                                #
-# Methods:  __init__, comparison_grid_1_sqkm, length, point_count,    #
-#           length_difference, std_point_density_per_length,          #
-#           surface_in_between, surface_in_between_per_area,          #
-#           hausdorff_distance                                        #
+# Methods:  __init__, comparison_grid_1_sqkm, length,                 #
+#           length_difference, point_count,                           #
+#           std_point_density_per_length, surface_in_between,         #
+#           surface_in_between_per_area, hausdorff_distance           #
 # Result: Report in a text file                                       #
 #######################################################################
 
@@ -59,7 +59,7 @@ class HexStatistics(object):
         return
 
     def point_count(self):
-        self.report.write("\n---Point count per length---\n")
+        self.report.write("\n---Point count---\n")
         with arcpy.da.SearchCursor(self.original, ["SHAPE@"]) as cursor:
             original_pntnum = 0
             for row in cursor:
@@ -84,7 +84,8 @@ class HexStatistics(object):
 
 
     def std_point_density_per_length(self):
-        self.report.write("\n---Standard deviation of point count per "
+        self.report.write("\n---Percentage change of standard deviation of "
+                          + "point count and average point density per "
                           + "length---\n")
         with arcpy.da.SearchCursor(self.grid, ["PageNumber"]) as cursor:
             count_cells = 0
@@ -172,6 +173,7 @@ class HexStatistics(object):
         return
 
     def surface_in_between(self):
+        self.report.write("\n---Differential surface---\n")
         temp_merge = "in_memory\\merge"
         arcpy.Merge_management([self.original, self.simplified], temp_merge)
         temp_poly = "in_memory\\poly"
@@ -187,13 +189,13 @@ class HexStatistics(object):
                 parts += 1
         mean = summarize / parts
         arcpy.Delete_management(temp_poly)
-        self.report.write("\n---Differential surface---\n")
         self.report.write("Sum area: {:0.4f} sq m\n".format(summarize))
         self.report.write("Mean area: {:0.4f} sq m\n".format(mean))
         arcpy.AddMessage("Differential surface statistics - done.")
         return
 
     def surface_in_between_per_area(self):
+        self.report.write("\n---Differential surface per length and area---\n")
         temp_merge = "in_memory\\merge"
         arcpy.Merge_management([self.original, self.simplified], temp_merge)
         temp_poly = "in_memory\\poly"
@@ -234,7 +236,6 @@ class HexStatistics(object):
                 sum_right += poly_point_area_array[elem]
             else:
                 sum_left += poly_point_area_array[elem]
-        self.report.write("\n---Differential surface per length and area---\n")
         self.report.write("Sum of positive areal displacement: {0} sq m\n"
                           .format(sum_right))
         self.report.write("Sum of negative areal displacement: {0} sq m\n"
@@ -263,9 +264,8 @@ class HexStatistics(object):
         self.surface_in_between()
         self.surface_in_between_per_area()
         self.hausdorff_distance()
+        arcpy.AddMessage("Finished calculating statistics...")
         self.report.close()
-
-
 
 if __name__ == '__main__':
     calculating_statistics = HexStatistics(arcpy.GetParameterAsText(0),
