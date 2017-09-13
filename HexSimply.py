@@ -21,6 +21,7 @@
 #          furthest_point, choose_method                              #
 # Result: Object - Simplified polyline feature class with             #
 #         no self-crossing                                            #
+# Required: ArcGIS for Desktop Advanced                               #
 #######################################################################
 
 import os

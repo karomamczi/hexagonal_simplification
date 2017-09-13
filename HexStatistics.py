@@ -14,6 +14,7 @@
 #           std_point_density_per_length, surface_in_between,         #
 #           surface_in_between_per_area, hausdorff_distance           #
 # Result: Report in a text file                                       #
+# Required: ArcGIS for Desktop Advanced                               #
 #######################################################################
 
 from sys import exit

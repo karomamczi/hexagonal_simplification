@@ -17,6 +17,7 @@
 #          coefficients_general_equation, intersection_vertices,      #
 #          calculate_distance, azimuth, eliminate_self_crossing       #
 # Result: Data passed with lists, variables, dictionaries, boolean    #
+# Required: ArcGIS for Desktop Advanced                               #
 #######################################################################
 
 import arcpy
