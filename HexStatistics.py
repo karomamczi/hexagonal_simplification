@@ -9,7 +9,7 @@
 # Version: 1.0.0                                                      #
 # Description: Statistics used to test quality of line simplification #
 # Class: HexStatistics                                                #
-# Methods:  __init__, comparison_grid_1_sqkm, length,                 #
+# Methods:  __init__, comparison_grid_1_sqkm, length, read_geom,      #
 #           length_difference, point_count,                           #
 #           std_point_density_per_length, surface_in_between,         #
 #           surface_in_between_per_area, hausdorff_distance           #
@@ -50,7 +50,22 @@ class HexStatistics(object):
                 length = i_line[0].getLength("PLANAR", "METERS")
         return length
 
+    @staticmethod
+    def read_geom(shape):
+        with arcpy.da.SearchCursor(shape, ["SHAPE@"]) as cursor:
+            shape_coords = []
+            partnum = 0
+            for row in cursor:
+                for part in row[0]:
+                    pntnum = 0
+                    for pnt in part:
+                        shape_coords.append([pnt.X, pnt.Y])
+                        pntnum += 1
+                    partnum += 1
+        return shape_coords
+
     def length_difference(self):
+        arcpy.AddMessage("Started length difference statistics...")
         self.report.write("\n---Difference in length---\n")
         percentage = (self.length(self.simplified) /
                       self.length(self.original)) * 100
@@ -60,6 +75,7 @@ class HexStatistics(object):
         return
 
     def point_count(self):
+        arcpy.AddMessage("Started point count statistics...")
         self.report.write("\n---Point count---\n")
         with arcpy.da.SearchCursor(self.original, ["SHAPE@"]) as cursor:
             original_pntnum = 0
@@ -83,8 +99,9 @@ class HexStatistics(object):
         arcpy.AddMessage("Point count statistics - done.")
         return
 
-
     def std_point_density_per_length(self):
+        arcpy.AddMessage("Started point count tandard deviation and density "
+                         + "statistics...")
         self.report.write("\n---Percentage change of standard deviation of "
                           + "point count and average point density per "
                           + "length---\n")
@@ -170,10 +187,12 @@ class HexStatistics(object):
                           + "{:0.10f} m\n".format(average_density))
         arcpy.Delete_management(temp_stats_original)
         arcpy.Delete_management(temp_stats_simplified)
-        arcpy.AddMessage("Point count per area statistics - done.")
+        arcpy.AddMessage("Point count tandard deviation and density statistics"
+                         + " - done.")
         return
 
     def surface_in_between(self):
+        arcpy.AddMessage("Started differential surface statistics... ")
         self.report.write("\n---Differential surface---\n")
         temp_merge = "in_memory\\merge"
         arcpy.Merge_management([self.original, self.simplified], temp_merge)
@@ -196,6 +215,8 @@ class HexStatistics(object):
         return
 
     def surface_in_between_per_area(self):
+        arcpy.AddMessage("Started differential surface per area"
+                         + " statistics... ")
         self.report.write("\n---Differential surface per length and area---\n")
         temp_merge = "in_memory\\merge"
         arcpy.Merge_management([self.original, self.simplified], temp_merge)
@@ -237,6 +258,10 @@ class HexStatistics(object):
                 sum_right += poly_point_area_array[elem]
             else:
                 sum_left += poly_point_area_array[elem]
+        arcpy.Delete_management(temp_poly)
+        arcpy.Delete_management(temp_intersect_poly)
+        arcpy.Delete_management(temp_stats_poly)
+        arcpy.Delete_management(temp_poly_points)
         self.report.write("Sum of positive areal displacement: {0} sq m\n"
                           .format(sum_right))
         self.report.write("Sum of negative areal displacement: {0} sq m\n"
@@ -253,6 +278,47 @@ class HexStatistics(object):
         return
 
     def hausdorff_distance(self):
+        arcpy.AddMessage("Started Hausdorff distance statistics...")
+        self.report.write("\n---Hausdorff distance---\n")
+        original_points = self.read_geom(self.original)
+        simplified_points = self.read_geom(self.simplified)
+        orig_size = len(original_points)
+        simpl_size = len(simplified_points)
+        from_orig_to_simpl = 0.0
+        i = 0
+        while i < orig_size:
+            cmin = 1000000000000000.0
+            j = 0
+            while j < simpl_size:
+                d = sqrt((simplified_points[j][0] - original_points[i][0])**2
+                        + (simplified_points[j][1] - original_points[i][1])**2)
+                if d <= cmin:
+                    cmin = d
+
+                j += 1
+            if cmin >= from_orig_to_simpl:
+                from_orig_to_simpl = cmin
+            i += 1
+        from_simpl_to_orig = 0.0
+        i = 0
+        while i < simpl_size:
+            cmin = 1000000000000000.0
+            j = 0
+            while j < orig_size:
+                d = sqrt((original_points[j][0] - simplified_points[i][0])**2
+                        + (original_points[j][1] - simplified_points[i][1])**2)
+                if d <= cmin:
+                    cmin = d
+                j += 1
+            if cmin >= from_simpl_to_orig:
+                from_simpl_to_orig = cmin
+            i += 1
+        haus_dist = max([from_orig_to_simpl, from_simpl_to_orig])
+        self.report.write('Hausdorff distance: {:0.3f} m\n'.format(haus_dist))
+        self.report.write('Hausdorff distance from original to simplified: '
+                          + '{:0.3f} m\n'.format(from_orig_to_simpl))
+        self.report.write('Hausdorff distance from simplified to original: '
+                          + '{:0.3f} m\n'.format(from_simpl_to_orig))
         arcpy.AddMessage("Hausdorff distance statistics - done.")
         return
 
