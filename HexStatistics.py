@@ -10,9 +10,9 @@
 # Description: Statistics used to test quality of line simplification #
 # Class: HexStatistics                                                #
 # Methods:  __init__, comparison_grid_1_sqkm, length, read_geom,      #
-#           length_difference, point_count,                           #
-#           std_point_density_per_length, surface_in_between,         #
-#           surface_in_between_per_area, hausdorff_distance           #
+#           length_difference, point_count, std_point_per_area,       #
+#           density_per_length, surface_in_between,                   #
+#           surface_in_between_per_length_area, hausdorff_distance    #
 # Result: Report in a text file                                       #
 # Required: ArcGIS for Desktop Advanced                               #
 #######################################################################
@@ -54,14 +54,10 @@ class HexStatistics(object):
     def read_geom(shape):
         with arcpy.da.SearchCursor(shape, ["SHAPE@"]) as cursor:
             shape_coords = []
-            partnum = 0
             for row in cursor:
                 for part in row[0]:
-                    pntnum = 0
                     for pnt in part:
                         shape_coords.append([pnt.X, pnt.Y])
-                        pntnum += 1
-                    partnum += 1
         return shape_coords
 
     def length_difference(self):
@@ -77,34 +73,23 @@ class HexStatistics(object):
     def point_count(self):
         arcpy.AddMessage("Started point count statistics...")
         self.report.write("\n---Point count---\n")
-        with arcpy.da.SearchCursor(self.original, ["SHAPE@"]) as cursor:
-            original_pntnum = 0
-            for row in cursor:
-                for part in row[0]:
-                    for pnt in part:
-                        original_pntnum += 1
-        self.report.write("Number of points before simplification: {0}\n"
+        original_pntnum = float(len(self.read_geom(self.original)))
+        self.report.write("Number of points before simplification: {:0.0f}\n"
                           .format(original_pntnum))
-        with arcpy.da.SearchCursor(self.simplified, ["SHAPE@"]) as cursor:
-            simplified_pntnum = 0
-            for row in cursor:
-                for part in row[0]:
-                    for pnt in part:
-                        simplified_pntnum += 1
-        self.report.write("Number of points after simplification: {0}\n"
+        simplified_pntnum = float(len(self.read_geom(self.simplified)))
+        self.report.write("Number of points after simplification: {:0.0f}\n"
                           .format(simplified_pntnum))
-        percentage = (float(simplified_pntnum) / float(original_pntnum))*100
+        percentage = (simplified_pntnum / original_pntnum) * 100
         self.report.write("Percentage change in number of coordinates: "
                           + "{:0.2f}%\n".format(percentage))
         arcpy.AddMessage("Point count statistics - done.")
         return
 
-    def std_point_density_per_length(self):
-        arcpy.AddMessage("Started point count tandard deviation and density "
+    def std_point_per_area(self):
+        arcpy.AddMessage("Started point count standard deviation "
                          + "statistics...")
         self.report.write("\n---Percentage change of standard deviation of "
-                          + "point count and average point density per "
-                          + "length---\n")
+                          + "point count per area---\n")
         with arcpy.da.SearchCursor(self.grid, ["PageNumber"]) as cursor:
             count_cells = 0
             for row in cursor:
@@ -141,7 +126,7 @@ class HexStatistics(object):
             for row_fr1 in cursor:
                 points_original_in_cells.append(row_fr1[0])
         mean_original = sum(points_original_in_cells) \
-                        / len(points_original_in_cells)
+                        / float(len(points_original_in_cells))
         points_original_in_cells[:] = [(x - mean_original)**2
                                        for x in points_original_in_cells]
         std_original = sqrt(float(sum(points_original_in_cells)) \
@@ -157,7 +142,7 @@ class HexStatistics(object):
             for row_fr2 in cursor:
                 points_simplified_in_cells.append(row_fr2[0])
         mean_simplified = sum(points_simplified_in_cells) \
-                        / len(points_simplified_in_cells)
+                        / float(len(points_simplified_in_cells))
         points_simplified_in_cells[:] = [(x - mean_simplified)**2
                                        for x in points_simplified_in_cells]
         std_simplified = sqrt(float(sum(points_simplified_in_cells)) \
@@ -171,24 +156,32 @@ class HexStatistics(object):
         self.report.write("Percentage change in the standard deviation of the "
                           + "number of coordinates: "
                           + "{:0.2f}%\n".format(percentage))
+        arcpy.Delete_management(temp_stats_original)
+        arcpy.Delete_management(temp_stats_simplified)
+        arcpy.AddMessage("Point count standard deviation statistics"
+                         + " - done.")
+        return
+
+    def density_per_length(self):
+        arcpy.AddMessage("Started point density statistics...")
+        self.report.write("\n---Average point density per length---\n")
+        original_pntnum = len(self.read_geom(self.original))
         original_length = self.length(self.original)
-        density_per_length_original = sum(points_original_in_cells) / \
+        density_per_length_original = original_pntnum / \
                                        original_length
         self.report.write("Density of original points per meter:"
-                          + " {:0.6f} m\n".format(density_per_length_original))
+                          + " {:0.6f} points/m\n".format(density_per_length_original))
+        simplified_pntnum = len(self.read_geom(self.simplified))
         simplified_length = self.length(self.simplified)
-        density_per_length_simplified = sum(points_simplified_in_cells) / \
+        density_per_length_simplified = simplified_pntnum / \
                                        simplified_length
         self.report.write("Density of simplified points per meter: "
-                         + "{:0.6f} m\n".format(density_per_length_simplified))
+                         + "{:0.6f} points/m\n".format(density_per_length_simplified))
         average_density = density_per_length_original \
                           - density_per_length_simplified
         self.report.write("Difference in average density: "
-                          + "{:0.10f} m\n".format(average_density))
-        arcpy.Delete_management(temp_stats_original)
-        arcpy.Delete_management(temp_stats_simplified)
-        arcpy.AddMessage("Point count tandard deviation and density statistics"
-                         + " - done.")
+                          + "{:0.10f} points/m\n".format(average_density))
+        arcpy.AddMessage("Point  density statistics - done.")
         return
 
     def surface_in_between(self):
@@ -214,7 +207,7 @@ class HexStatistics(object):
         arcpy.AddMessage("Differential surface statistics - done.")
         return
 
-    def surface_in_between_per_area(self):
+    def surface_in_between_per_length_area(self):
         arcpy.AddMessage("Started differential surface per area"
                          + " statistics... ")
         self.report.write("\n---Differential surface per length and area---\n")
@@ -268,9 +261,9 @@ class HexStatistics(object):
                           .format(sum_left))
         average_differential = (sum_right + sum_left) / \
                                self.length(self.original)
-        self.report.write("The total areal difference: "
+        self.report.write("The total areal difference per length: "
                           + "{:0.4f} sq m/m\n".format(average_differential))
-        differential_sqkm = len(set(poly_point_page_array))
+        differential_sqkm = float(len(set(poly_point_page_array)))
         difference_per_sqkm = (sum_right + sum_left) / differential_sqkm
         self.report.write("Average areal difference per 1 sq km: "
                           + "{:0.4f} sq m/sq km\n".format(difference_per_sqkm))
@@ -327,9 +320,10 @@ class HexStatistics(object):
         arcpy.AddMessage("Started calculating statistics...")
         self.length_difference()
         self.point_count()
-        self.std_point_density_per_length()
+        self.std_point_per_area()
+        self.density_per_length()
         self.surface_in_between()
-        self.surface_in_between_per_area()
+        self.surface_in_between_per_length_area()
         self.hausdorff_distance()
         arcpy.AddMessage("Finished calculating statistics...")
         self.report.close()
