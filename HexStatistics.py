@@ -170,13 +170,15 @@ class HexStatistics(object):
         density_per_length_original = original_pntnum / \
                                        original_length
         self.report.write("Density of original points per meter:"
-                          + " {:0.6f} points/m\n".format(density_per_length_original))
+                          + " {:0.6f} points/m\n".format(
+            density_per_length_original))
         simplified_pntnum = len(self.read_geom(self.simplified))
         simplified_length = self.length(self.simplified)
         density_per_length_simplified = simplified_pntnum / \
                                        simplified_length
         self.report.write("Density of simplified points per meter: "
-                         + "{:0.6f} points/m\n".format(density_per_length_simplified))
+                         + "{:0.6f} points/m\n".format(
+            density_per_length_simplified))
         average_density = density_per_length_original \
                           - density_per_length_simplified
         self.report.write("Difference in average density: "
