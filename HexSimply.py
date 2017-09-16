@@ -40,8 +40,7 @@ class HexSimply(object):
         self.method = method
         self.choose_method()
 
-    """
-    General formula proposed by Paulo Raposo, author of the line
+    """General formula proposed by Paulo Raposo, author of the line
     simplification algorithm based on vertex clustering on a hexagonal
     tesselation.
     Article: Raposo, P. (2013). Scale-specific automated
@@ -75,9 +74,8 @@ class HexSimply(object):
             cursor.insertRow([arcpy.Polyline(arcpy.Array(arc_point_list))])
         return
 
-    """
-    Direction of tessellation consistent horizontally to bounding box
-    starting from upper-left corner of this bounding box.
+    """Direction of tessellation consistent horizontally to bounding
+    box starting from upper-left corner of this bounding box.
     """
     def bounding_box(self):
         self.set_path()
@@ -200,9 +198,8 @@ class HexSimply(object):
         self.create_new_feature(HexTools.eliminate_self_crossing(mean_xy))
         return
 
-    """
-    Direction of tessellation consistent to direction of minimal area
-    rectangle starting from the corner of the rectangle
+    """Direction of tessellation consistent to direction of minimal
+    area rectangle starting from the corner of the rectangle
     """
     def minimal_rectangle_area(self):
         self.set_path()
@@ -218,10 +215,9 @@ class HexSimply(object):
         self.oriented_rectangle(a, b, x0, x1, y0, y1, polyline_coords)
         return
 
-    """
-    Direction of tessellation consistent to direction of minimal width
-    rectangle starting from the corner of the rectangle. It is not a
-    pure method for this algorithm, because it is divided with
+    """Direction of tessellation consistent to direction of minimal
+    width rectangle starting from the corner of the rectangle. It is
+    not a pure method for this algorithm, because it is divided with
     conditions for minimal area rectangle.
     """
     def minimal_rectangle_area_or_width(self):
@@ -251,8 +247,7 @@ class HexSimply(object):
                 self.minimal_rectangle_area()
         return
 
-    """
-    Direction of tessellation consistent to the directions of two
+    """Direction of tessellation consistent to the directions of two
     bisectors of vertically opposite angles, which vertex is
     simultaneously the furthest point of the original polyline to the
     line, which joins first and last point. Angles are created with

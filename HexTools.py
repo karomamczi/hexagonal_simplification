@@ -55,8 +55,7 @@ class HexTools:
                     partnum += 1
         return rect_area_poly_coords
 
-    """
-    The algorithm is known as "Ray Casting Method"
+    """The algorithm is known as "Ray Casting Method"
     Implemented to the code based on the code from website:
     http://geospatialpython.com/2011/01/point-in-polygon.html
     """
