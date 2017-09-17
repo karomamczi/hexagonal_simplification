@@ -316,7 +316,7 @@ class HexSimply(object):
         dx2 = xy_for_side[2][2]-xy_for_side[1][2]
         dy2 = xy_for_side[2][3]-xy_for_side[1][3]
         angle = HexTools.azimuth(dx1, dy1) - HexTools.azimuth(dx2, dy2)
-        if angle > pi/2:
+        if round(angle*180/pi, 2) > 90:
             xy_for_side[2], xy_for_side[0] = xy_for_side[0], xy_for_side[2]
         x0, x1, x2, y0, y1, y2 = xy_for_side[0][2], xy_for_side[1][2], \
                                  xy_for_side[2][2], xy_for_side[0][3], \
