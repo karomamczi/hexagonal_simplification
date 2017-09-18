@@ -114,10 +114,10 @@ class HexStatistics(object):
         temp_stats_original = "in_memory\\stats_original"
         temp_stats_simplified = "in_memory\\stats_simplified"
         arcpy.Statistics_analysis(temp_intersect_original, temp_stats_original,
-                                  "Id SUM", "PageNumber")
+                                  "FID SUM", "PageNumber")
         arcpy.Statistics_analysis(temp_intersect_simplified,
                                   temp_stats_simplified,
-                                  "Id SUM", "PageNumber")
+                                  "FID SUM", "PageNumber")
         arcpy.Delete_management(temp_intersect_original)
         arcpy.Delete_management(temp_intersect_simplified)
         with arcpy.da.SearchCursor(temp_stats_original,
