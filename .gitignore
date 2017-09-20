@@ -1,7 +1,4 @@
 help/
-stare/
-testy.py
-outputs/
-tests/
 reports/
+tests/
 /HexTools.pyc
