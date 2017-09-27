@@ -19,7 +19,7 @@ Description: Set of tools useful for testing the quality of simplification.Stati
 	•	average differential surface per length and area,
 	•	hausdorff distance.
 			
-Look for results in \example directory.
+Look for results in /example directory.
 			
 Data source: vector layers http://download.geofabrik.de/
 
