@@ -1,7 +1,7 @@
 # Hexagonal Simplification ArcToolbox
 
 ## Description
-Implementation of line simplification methods based on hexagonal tessellation generated on bounding box and oriented rectangles. Implementation of automated tests on efficiency and quality of processed simplification.
+Implementation of line simplification methods based on hexagonal tessellation generated on bounding box ([inspired by Raposo's algorithm](https://github.com/paulojraposo/HexQuant)) and oriented rectangles (author's original modification). Implementation of automated tests on efficiency and quality of processed simplification.
 
 ## Tools
 ### Hexagonal Simplification
